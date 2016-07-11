@@ -30,14 +30,14 @@ class Kohonen:
 
         self._train += 1
 
-        bou_score = 0 # best maching unit
+        bou_score = float('inf') # best maching unit
         bou_index = (0,0)
         for i in range(0, self._width):
             for j in range(0, self._height):
                 score = 0
                 for k in range(0, self._length):
                     score += (self._map[i,j,k] - vector[k])**2
-                if score > bou_score:
+                if score < bou_score:
                     bou_score = score
                     bou_index = (i,j)
 
@@ -117,14 +117,23 @@ class Visualizer:
         self._som = kohonen
         plt.ion()
         self._im = plt.imshow(self._som._map)
+        self._anim = []
     def show(self):
         # print "Show ", self._som
         self._im.set_data(self._som._map)
+        self._anim.append( np.copy(self._som._map) )
         plt.draw()
         plt.pause(0.1)
     def animate(self):
         # print "Animate ", self._som
-        self.show()
+        # self.show()
+        self._anim.append( np.copy(self._som._map) )
+        self._play()
+    def _play(self):
+        for i in self._anim:
+            self._im.set_data(i)
+            plt.draw()
+            plt.pause(0.1)
 
 
 
@@ -135,10 +144,16 @@ if __name__ == "__main__":
     vis.animate()
     print ""
 
-    for i in range(0,10000):
+    for i in range(0,100):
         if (i%10 == 0):
             print "Train no ", i
-            vis.animate()
+            vis.show()
         vector = np.random.random(3)
 
         som.train(vector)
+
+    try:
+        while True:
+            vis.animate()
+    except KeyboardInterrupt:
+        pass
