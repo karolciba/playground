@@ -20,7 +20,7 @@ class Linear:
 
         self._train = 0
         self._coef = 0.01
-        self._delta = 10
+        self._delta = map_size/20
 
     def train(self, vector):
 
@@ -28,11 +28,15 @@ class Linear:
 
         bou_score = float('inf')
         bou_index = 0
-        for i in range(0, self._size):
-            score = math.sqrt( sum( (a - b)**2 for a,b in zip(vector,self._map[i])))
-            if score < bou_score:
-                bou_score = score
-                bou_index = i
+        # for i in range(0, self._size):
+        #     score = math.sqrt( sum( (a - b)**2 for a,b in zip(vector,self._map[i])))
+        #     if score < bou_score:
+        #         bou_score = score
+        #         bou_index = i
+
+        # find best matching unit
+        score_matrix =  np.linalg.norm(self._map-vector,axis=1)
+        bou_index = np.argmin(score_matrix)
 
         min_x = max(bou_index - self._delta, 0)
         max_x = min(bou_index + self._delta, self._size)

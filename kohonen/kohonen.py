@@ -4,6 +4,7 @@ import matplotlib
 
 # matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import math
 
 
 """
@@ -38,8 +39,9 @@ class Kohonen:
         for i in range(0, self._width):
             for j in range(0, self._height):
                 score = 0
-                for k in range(0, self._length):
-                    score += (self._map[i,j,k] - vector[k])**2
+                score = math.sqrt( sum( (a - b)**2 for a,b in zip(vector,self._map[i,j])))
+                # for k in range(0, self._length):
+                    # score += (self._map[i,j,k] - vector[k])**2
                 if score < bou_score:
                     bou_score = score
                     bou_index = (i,j)
@@ -125,8 +127,8 @@ class Visualizer:
         # print "Show ", self._som
         self._im.set_data(self._som._map)
         self._anim.append( np.copy(self._som._map) )
-        # plt.draw()
-        # plt.pause(0.1)
+        plt.draw()
+        plt.pause(0.1)
     def animate(self):
         # print "Animate ", self._som
         # self.show()
