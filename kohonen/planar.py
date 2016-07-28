@@ -10,7 +10,7 @@ import math
 """
 Usage:
 
-    som = Kohonen(3,20,10)
+    som = Planar(3,20,10)
     ; set other parameters?
     for i in range(0,1000):
         som.train([red,green,blue])
@@ -18,7 +18,7 @@ Usage:
     self.clasify([0.1,0.4,0.5])
 
 """
-class Kohonen:
+class Planar:
     def __init__(self, vector_size, map_size):
         self._length = vector_size
         self._width = map_size[0]
@@ -106,7 +106,7 @@ class Kohonen:
 """
 Usage:
 
-    som = Kohonen(3,20,10)
+    som = Planar(3,20,10)
     vis = Visualizer(som)
 
     som.train([red,green,blue])
@@ -168,7 +168,7 @@ class Visualizer:
 
 
 if __name__ == "__main__":
-    som = Kohonen(3, (200,200))
+    som = Planar(3, (200,200))
     vis = Visualizer(som)
     vis.animate()
     print ""
