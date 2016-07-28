@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.path import Path
 import matplotlib.patches as patches
 import math
+import scipy.signal
 
 class Linear:
     def __init__(self, vector_size, map_size):
@@ -21,6 +22,10 @@ class Linear:
         self._train = 0
         self._coef = 0.01
         self._delta = map_size/20
+        self._sim = scipy.signal.ricker(self._delta, (self._delta-1)/2)
+        self._sim /= np.max(self._sim)
+        # self._sim = scipy.signal.gaussian(self._delta, self._delta/4)
+        # self._sim = scipy.signal.flattop(self._delta)
 
     def train(self, vector):
 
@@ -44,16 +49,17 @@ class Linear:
         for i in range(min_x, max_x):
             if i == bou_index and (self._train % 100 == 0):
                 print i, bou_index, vector, self._map[i],
+
             dist = bou_index - abs(i)
-            sim = abs(dist/float(self._delta))
+            sim = self._sim[dist - 1]
+
+            # sim = abs(dist/float(self._delta))
             for k in range(0, self._length):
                 # distance = math.sqrt( sum( (a - b)**2 for a,b in zip(vector,self._map[i])))
                 # self._map[i,k] -= self._coef * distance
                 self._map[i,k] -= sim * self._coef * (self._map[i,k] - vector[k])
-                # self._map[i,k] = max(self._map[i,k], 0)
-                # self._map[i,k] = min(self._map[i,k], 1)
-            if i == bou_index and (self._train % 100 == 0):
-                print self._map[i]
+                self._map[i,k] = max(self._map[i,k], 0)
+                self._map[i,k] = min(self._map[i,k], 1)
 
 
 """
@@ -137,7 +143,7 @@ class Visualizer:
 
 
 if __name__ == "__main__":
-    som = Linear(2, 500)
+    som = Linear(2, 300)
     vis = Visualizer(som)
     vis.animate()
     print ""
