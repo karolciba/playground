@@ -12,7 +12,7 @@ class Camera:
         self.position = position
         self._calc_boundaries()
     def shift(self, delta):
-        self.position = map(operator.add, self._position, delta)
+        self.position = map(operator.add, self.position, delta)
         self._calc_boundaries()
     def resize(self, size):
         self.size = size
@@ -35,6 +35,8 @@ class Point:
         self.position = position
         self.size = size
         self.color = color
+    def shift(self, delta):
+        self.position = map(operator.add, self.position, delta)
     def __str__(self):
         return "Point @%s" % (self.position,)
 
@@ -79,22 +81,34 @@ class Line:
         self.color = color
     def __str__(self):
         return "Line from %s to %s" % (self.begin, self.end)
+    def shift(self, delta):
+        self.begin.shift(delta)
+        self.end.shift(delta)
 
 class DDALinesRenderer(Renderer):
     """
     http://www.tutorialspoint.com/computer_graphics/line_generation_algorithm.htm
     """
     def render(self, buffer, camera, lines):
-        left = camera.position[0]
-        right = camera.position[0] + camera.field[0]
-        down = camera.position[1]
-        top = camera.position[1] + camera.field[1]
-
-        inside = [ line for line in lines
-                  if self._point_inside(camera, line.begin)
-                     and self._point_inside(camera, line.end) ]
-        partial = []
+        # inside = [ line for line in lines
+        #           if self._point_inside(camera, line.begin)
+        #              and self._point_inside(camera, line.end) ]
+        inside = []
+        begin = []
+        end = []
         outside = []
+
+        for line in lines:
+            if self._point_inside(camera, line.begin):
+                if self._point_inside(camera, line.end):
+                    inside.append(line)
+                else:
+                    begin.append(line)
+            else:
+                if self._point_inside(camera, line.end):
+                    end.append(line)
+                else:
+                    outside.append(line)
 
         # import pdb; pdb.set_trace()
 
@@ -122,6 +136,9 @@ class DDALinesRenderer(Renderer):
         pass
 
 class BresenhamLinesRenderer(Renderer):
+    """
+    http://members.chello.at/~easyfilter/bresenham.html
+    """
     def render(self, buffer, camera, line):
         pass
 
@@ -151,15 +168,15 @@ if __name__=="__main__":
 
     p = Planar( (1000, 1000) )
 
-    p.add_point( Point( (0.2, 0.2), size=9, color=(0,0,1) ) )
-    p.add_point( Point( (0.5, 0.5), size=9, color=(0,1,0) ) )
-    p.add_point( Point( (1.5, 1.5), size=15, color=(1,0,0) ) )
+    p.add_point( Point( (0.2, 0.2), size=5, color=(0,0,1) ) )
+    p.add_point( Point( (0.5, 0.5), size=5, color=(0,1,0) ) )
+    p.add_point( Point( (1.5, 1.5), size=5, color=(1,0,0) ) )
 
     p.add_line( Line(Point((0.3, 0.1)), Point((1.1,1.4)), color=(0,0,1)) )
     p.add_line( Line(Point((0.9, 0.9)), Point((.1,.8)), color=(0,1,0)) )
 
-    p.add_points( (Point((0.3, 0.1)), Point((1.1,1.4))) )
-    p.add_points( (Point((0.9, 0.9)), Point((.1,.8))) )
+    p.add_points( (Point((0.3, 0.1), size=9), Point((1.1,1.4), size=9)) )
+    p.add_points( (Point((0.9, 0.9), size=9), Point((.1,.8), size=9)) )
 
     p.render(b)
 
