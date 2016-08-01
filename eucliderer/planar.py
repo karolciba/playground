@@ -59,9 +59,17 @@ class PointsRenderer(Renderer):
         vertical_size = camera.down - camera.top
         for point in visible:
             x = (point.position[0]-camera.left)*camera.size[0]/horizontal_size
-            y = (point.position[1]-camera.down)*camera.size[1]/vertical_size
+            y = (point.position[1]-camera.top)*camera.size[1]/vertical_size
 
-            buffer[int(round(x))][int(round(y))] = point.color
+            rx = int(round(x))
+            ry = int(round(y))
+            for i in range( -point.size/2, point.size/2):
+                for j in range( -point.size/2, point.size/2):
+                    rxi = rx + i
+                    ryj = ry + j
+                    if rxi < 0 or rxi >= camera.size[0] or ryj < 0 or ryj >= camera.size[1]:
+                        continue
+                    buffer[rxi][ryj] = point.color
 
 class Line:
     def __init__(self, begin, end, size=1, color=(1,1,1)):
@@ -118,8 +126,8 @@ class BresenhamLinesRenderer(Renderer):
         pass
 
 class Planar():
-    def __init__(self):
-        self.camera = Camera( (0,0), (100, 100), (1,1))
+    def __init__(self, size=(100,100)):
+        self.camera = Camera( (0,0), size, (1,1))
         self._points = []
         self._lines = []
         self._point_renderer = PointsRenderer()
@@ -139,11 +147,13 @@ if __name__=="__main__":
     import numpy as np
     import matplotlib.pyplot as plt
 
-    b = np.zeros( (100, 100, 3) )
-    p = Planar()
-    p.add_point( Point( (0.2, 0.2), color=(0,0,1) ) )
-    p.add_point( Point( (0.5, 0.5), color=(0,1,0) ) )
-    p.add_point( Point( (1.5, 1.5), color=(1,0,0) ) )
+    b = np.zeros( (1000, 1000, 3) )
+
+    p = Planar( (1000, 1000) )
+
+    p.add_point( Point( (0.2, 0.2), size=9, color=(0,0,1) ) )
+    p.add_point( Point( (0.5, 0.5), size=9, color=(0,1,0) ) )
+    p.add_point( Point( (1.5, 1.5), size=15, color=(1,0,0) ) )
 
     p.add_line( Line(Point((0.3, 0.1)), Point((1.1,1.4)), color=(0,0,1)) )
     p.add_line( Line(Point((0.9, 0.9)), Point((.1,.8)), color=(0,1,0)) )
