@@ -58,12 +58,10 @@ class PointsRenderer(Renderer):
         horizontal_size = camera.right - camera.left
         vertical_size = camera.down - camera.top
         for point in visible:
-            x = (point.position[0] - camera.left)/horizontal_size
-            x = int(round(abs(x)*camera.size[0]))
-            y = (point.position[1] - camera.down)/vertical_size
-            y = int(round(abs(y)*camera.size[1]))
+            x = (point.position[0]-camera.left)*camera.size[0]/horizontal_size
+            y = (point.position[1]-camera.down)*camera.size[1]/vertical_size
 
-            buffer[x,y] = point.color
+            buffer[int(round(x))][int(round(y))] = point.color
 
 class Line:
     def __init__(self, begin, end, size=1, color=(1,1,1)):
@@ -95,31 +93,22 @@ class DDALinesRenderer(Renderer):
         horizontal_size = camera.right - camera.left
         vertical_size = camera.down - camera.top
         for line in inside:
-            x0 = (line.begin.position[0] - camera.left)/horizontal_size
-            x0 = int(round(abs(x0)*camera.size[0]))
-            y0 = (line.begin.position[1] - camera.down)/vertical_size
-            y0 = int(round(abs(y0)*camera.size[1]))
-            x1 = (line.end.position[0] - camera.left)/horizontal_size
-            x1 = int(round(abs(x1)*camera.size[0]))
-            y1 = (line.end.position[1] - camera.down)/vertical_size
-            y1 = int(round(abs(y1)*camera.size[1]))
+            x0 = (line.begin.position[0]-camera.left)*camera.size[0]/horizontal_size
+            y0 = (line.begin.position[1]-camera.down)*camera.size[1]/vertical_size
+            x1 = (line.end.position[0]-camera.left)*camera.size[0]/horizontal_size
+            y1 = (line.end.position[1]-camera.down)*camera.size[1]/vertical_size
 
             dx = x1 - x0
             dy = y1 - y0
 
-            steps = dx if abs(dx) > abs(dy) else dy
-            steps = abs(steps)
-
+            steps = abs(dx if abs(dx) > abs(dy) else dy)
             xinc = dx/float(steps)
             yinc = dy/float(steps)
 
-            x = x0
-            y = y0
-            for i in range(0, steps):
-                buffer[int(round(x))][int(round(y))] = line.color
-                x += xinc
-                y += yinc
-            pass
+            for i in range(0, int(steps)):
+                buffer[int(round(x0))][int(round(y0))] = line.color
+                x0 += xinc
+                y0 += yinc
 
     def _draw_buffer_line(self, buffer, begin, end):
         pass
@@ -137,8 +126,8 @@ class Planar():
         self._line_renderer = DDALinesRenderer()
     def render(self, buffer):
         buffer[:,:] = (0, 0, 0)
-        self._point_renderer.render(buffer, self.camera, self._points)
         self._line_renderer.render(buffer, self.camera, self._lines)
+        self._point_renderer.render(buffer, self.camera, self._points)
     def add_point(self, point):
         self._points.append(point)
     def add_points(self, points):
@@ -158,6 +147,9 @@ if __name__=="__main__":
 
     p.add_line( Line(Point((0.3, 0.1)), Point((1.1,1.4)), color=(0,0,1)) )
     p.add_line( Line(Point((0.9, 0.9)), Point((.1,.8)), color=(0,1,0)) )
+
+    p.add_points( (Point((0.3, 0.1)), Point((1.1,1.4))) )
+    p.add_points( (Point((0.9, 0.9)), Point((.1,.8))) )
 
     p.render(b)
 
