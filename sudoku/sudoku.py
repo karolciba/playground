@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import numpy as np
 class State:
     def __init__(self, init=True, board=None):
@@ -110,7 +111,7 @@ class Brute:
             if self.visited % 1000 == 0:
                 print "Checking state %d (len %d)" % (self.visited, flen)
                 print state,
-                print "\033[10A"
+                print "\033[11A"
             self.visited += 1
             key, avail = findavail(state)
             # all values set
@@ -208,3 +209,19 @@ test = [[0,0,4,6,7,8,9,1,2],
         [9,6,1,5,3,7,2,8,4],
         [2,8,7,4,1,9,6,3,5],
         [3,4,5,2,8,6,1,7,9]]
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print "Provide solver name [brute|forward]"
+        sys.exit(1)
+
+    if sys.argv[1] == 'brute':
+        b = Brute(board)
+        b.solve()
+    elif sys.argv[1] == 'forward':
+        f = Forward(board)
+        f.solve()
+    else:
+        print "Provide solver name [brute|forward]"
