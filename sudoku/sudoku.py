@@ -153,6 +153,7 @@ class Forward:
 
         while fringe:
             state = fringe.pop()
+            flen -= 1
             if self.visited % 1000 == 0:
                 print "Checking state %d (len %d)" % (self.visited, flen)
                 print state,
