@@ -134,7 +134,7 @@ class Brute:
         # no solution exists
         return None
 
-class Forward:
+class Filter:
     def __init__(self, board):
         self.sudoku = Sudoku()
         self.state = State(board=board)
@@ -215,14 +215,14 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 2:
-        print "Provide solver name [brute|forward]"
+        print "Provide solver name [brute|filter]"
         sys.exit(1)
 
     if sys.argv[1] == 'brute':
         b = Brute(board)
         b.solve()
-    elif sys.argv[1] == 'forward':
-        f = Forward(board)
+    elif sys.argv[1] == 'filter':
+        f = Filter(board)
         f.solve()
     else:
-        print "Provide solver name [brute|forward]"
+        print "Provide solver name [brute|filter]"

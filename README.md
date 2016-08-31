@@ -6,9 +6,10 @@ I can't play sudoku, but can I write program that can play sudoku?
 
 Current solvers are:
 - brute solver, which probably won't find solution till sun shines
-- forward consistency checking backtracker, wich should be better
+- naive filtering, which should be better
 
 To be done:
+- forward filtering
 - arc consistency checking
 
 ## eucliderer
