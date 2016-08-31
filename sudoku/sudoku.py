@@ -11,9 +11,11 @@ class State:
                     for j in range(1,10):
                         el = board[i-1][j-1]
                         if el != 0:
-                            self.nodes[i,j] = set([el])
+                            self.assign((i,j), el)
         else:
             self.nodes = {}
+    def assign(self, pos, value):
+        self.nodes[pos] = set([value])
     def clone(self):
         s = State(False)
         for key,value in self.nodes.items():
@@ -45,10 +47,16 @@ def different(left, right):
         return True
     return left.isdisjoint(right)
 
+def prune(assigment, values):
+    values-={assigment}
+    if len(values) == 0:
+        return False
+    return True
 
 class Sudoku:
     def __init__(self):
         self.constraints = []
+        self.prunes = {}
         # for pos,value in board.values():
         #     self.state.nodes[pos] = set([value])
         # each node must have value
@@ -62,6 +70,7 @@ class Sudoku:
                 for k in range(j+1,10):
                     right = (i,k)
                     self.add_constraint(different,[left, right])
+                    self.add_prune(prune, left, right)
         # no two nodes in columnt can have same values
         for i in range(1,10):
             for j in range(1,10):
@@ -69,6 +78,7 @@ class Sudoku:
                 for k in range(j+1,10):
                     bottom = (k,i)
                     self.add_constraint(different,[top, bottom])
+                    self.add_prune(prune, top, bottom)
         for x in range(0,9,3):
             for y in range(0,9,3):
                 subs = []
@@ -78,8 +88,22 @@ class Sudoku:
                 for i in range(len(subs)):
                     for j in range(i+1, len(subs)):
                         self.add_constraint(different,(subs[i],subs[j]))
+                        self.add_prune(prune, subs[i], subs[j])
     def add_constraint(self, constraint, nodes):
         self.constraints.append((constraint, nodes))
+    def add_prune(self, constraint, left, right):
+        if left in self.prunes:
+            self.prunes[left].append( (constraint, right) )
+        else:
+            self.prunes[left] = [ (constraint, right) ]
+        if right in self.prunes:
+            self.prunes[right].append( (constraint, left) )
+        else:
+            self.prunes[right] = [ (constraint, left) ]
+    def assign(self, state, pos, value):
+        state.assign(pos,value)
+        for func,other in self.prunes[pos]:
+            func(value, state.nodes[other])
     def check(self, state):
         for con,pos_list in self.constraints:
             values = [ state.nodes[pos] for pos in pos_list ]
@@ -181,6 +205,65 @@ class Filter:
         # no solution exists
         return None
 
+class Forward:
+    def __init__(self, board):
+        self.sudoku = Sudoku()
+        self.state = State()
+        if board:
+            for i in range(1,10):
+                for j in range(1,10):
+                    el = board[i-1][j-1]
+                    if el != 0:
+                        # self.state.assign((i,j), el)
+                        self.sudoku.assign(self.state,(i,j), el)
+
+        self.visited = 0
+
+    def solve(self):
+
+        def findavail(state):
+            for key,values in state.nodes.items():
+                if len(values) > 1:
+                    return key, values
+            return None, None
+
+        fringe = [ self.state ]
+        flen = 1
+
+        print "Start state %d (len %d)" % (self.visited, flen)
+        print self.state
+
+        while fringe:
+            state = fringe.pop()
+            flen -= 1
+            # if self.visited % 1000 == 0:
+            print "\033[12A"
+            print "Checking state %d (len %d)" % (self.visited, flen)
+            print state
+            self.visited += 1
+            key, avail = findavail(state)
+            # all values set
+            if not avail:
+                # check if solves sudoku
+                # import pdb; pdb.set_trace()
+                solved = self.sudoku.check(state)
+                if solved:
+                    # solves sudoku
+                    return state
+                else:
+                    # doesn't solve, discard
+                    continue
+            for value in avail:
+                clone = state.clone()
+                self.sudoku.assign(clone, key, value)
+                # clone.nodes[key] = { value }
+                if self.sudoku.check(clone):
+                    fringe.append(clone)
+                    flen += 1
+
+        # no solution exists
+        return None
+
 board = [[5,3,0,0,7,0,0,0,0],
          [6,0,0,1,9,5,0,0,0],
          [0,9,8,0,0,0,0,6,0],
@@ -202,27 +285,53 @@ solved = [[5,3,4,6,7,8,9,1,2],
           [3,4,5,2,8,6,1,7,9]]
 
 test = [[0,0,4,6,7,8,9,1,2],
-        [6,7,2,1,9,5,3,4,8],
+        [6,7,2,1,0,5,3,4,8],
         [1,9,8,3,4,2,5,6,7],
-        [8,5,9,7,6,1,4,2,3],
+        [8,5,9,0,6,1,4,2,3],
         [4,2,6,8,5,3,7,9,1],
-        [7,1,3,9,2,4,8,5,6],
+        [7,0,3,9,2,4,8,5,6],
         [9,6,1,5,3,7,2,8,4],
         [2,8,7,4,1,9,6,3,5],
         [3,4,5,2,8,6,1,7,9]]
+
+hard = [[0,0,8,3,2,0,0,0,4],
+        [1,0,0,4,0,0,0,7,0],
+        [0,0,0,0,0,0,9,3,0],
+        [0,0,6,2,0,0,7,0,3],
+        [0,0,0,0,0,0,0,0,0],
+        [9,0,1,0,0,3,2,0,0],
+        [0,9,7,0,0,0,0,0,0],
+        [0,5,0,0,0,8,0,0,9],
+        [2,0,0,0,6,5,4,0,0]]
+
+evil = [[7,2,5,0,4,0,0,0,0],
+        [0,0,6,9,7,0,0,1,0],
+        [0,0,0,0,0,0,0,3,0],
+        [0,0,0,0,3,4,0,0,8],
+        [0,0,9,0,0,0,4,0,0],
+        [8,0,0,6,1,0,0,0,0],
+        [0,5,0,0,0,0,0,0,0],
+        [0,9,0,0,6,8,5,0,0],
+        [0,0,0,0,2,0,6,7,9]]
 
 if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 2:
-        print "Provide solver name [brute|filter]"
+        print "Provide solver name [brute|filter|forward]"
         sys.exit(1)
 
     if sys.argv[1] == 'brute':
         b = Brute(board)
-        b.solve()
+        solved = b.solve()
+        print solved
     elif sys.argv[1] == 'filter':
         f = Filter(board)
-        f.solve()
+        solved = f.solve()
+        print solved
+    elif sys.argv[1] == 'forward':
+        f = Forward(hard)
+        solved = f.solve()
+        print solved
     else:
-        print "Provide solver name [brute|filter]"
+        print "Provide solver name [brute|filter|forward]"
