@@ -6,10 +6,11 @@ I can't play sudoku, but can I write program that can play sudoku?
 
 Current solvers are:
 - brute solver, which probably won't find solution till sun shines
-- naive filtering, which should be better
+- naive filtering (check is state is consistent before processing), which should be better
+- forward filtering - remove unconsistent values in neighour nodes - blazingly fast
+  (simple problem in 300 tries, hard in tens of thousands)
 
 To be done:
-- forward filtering
 - arc consistency checking
 
 ## eucliderer
