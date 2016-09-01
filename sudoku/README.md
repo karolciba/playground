@@ -6,7 +6,8 @@ After (highly recommended) watching Berkeley AI lecures was time to implement so
 ## Test board
 Some "hard" sudoku problem found on the internet.
 
-```    376
+```
+    376
    6   9
   8     4
  9      1
