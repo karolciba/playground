@@ -14,7 +14,8 @@ Some "hard" sudoku problem found on the internet.
 3      4
 7     8
  1   9
-  254```
+  254
+```
 
 ## Brute solver
 Simple to write Depth First Search cheking all combinations was trivial to write but probably won't finish any problem till sun shine. It exponential growing state space (to power of 9!) grows way too fast. 61 nodes each has 9 values.
