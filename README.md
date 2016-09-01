@@ -2,6 +2,7 @@
 Playground on various subjects.
 
 ## sudoku
+
 I can't play sudoku, but can I write program that can play sudoku?
 
 Current solvers are:
@@ -9,9 +10,9 @@ Current solvers are:
 - naive filtering (check is state is consistent before processing), which should be better
 - forward filtering - remove unconsistent values in neighour nodes - blazingly fast
   (simple problem in 300 tries, hard in tens of thousands)
-
-To be done:
 - arc consistency checking
+
+Further notes in subdirectory [sudoku](sudoku/README.md)
 
 ## eucliderer
 Graphics renderer capable of drawing geometry primitives: dots, lines, boxes, curves.
