@@ -105,6 +105,16 @@ class Sudoku:
         state.assign(pos,value)
         for func,other in self.prunes[pos]:
             func(value, state.nodes[other])
+    def assignarc(self, state, pos, value):
+        state.assign(pos,value)
+        for func,other in self.prunes[pos]:
+            v = state.nodes[other]
+            before = len(v)
+            func(value, state.nodes[other])
+            v = state.nodes[other]
+            if len(v) == 1 and before != len(v):
+                self.assignarc(state, other, list(v)[0])
+
     def check(self, state):
         for con,pos_list in self.constraints:
             values = [ state.nodes[pos] for pos in pos_list ]
@@ -160,10 +170,23 @@ class Brute:
         return None
 
 def findbestavail(state):
+    import random
     best_score = 10
     best_match = None, None
     for key,values in state.nodes.items():
         if len(values) < best_score and len(values) > 1:
+            best_score = len(values)
+            best_match =  key, values
+    return best_match
+
+def findequalbestavail(state):
+    import random
+    best_score = 10
+    best_match = None, None
+    for key,values in state.nodes.items():
+        if len(values) == best_score and random.random() > 0.5:
+            best_match = key, values
+        elif len(values) < best_score and len(values) > 1:
             best_score = len(values)
             best_match =  key, values
     return best_match
@@ -272,6 +295,60 @@ class Forward:
         # no solution exists
         return None
 
+class Arc:
+    def __init__(self, board):
+        self.sudoku = Sudoku()
+        self.state = State()
+        if board:
+            for i in range(1,10):
+                for j in range(1,10):
+                    el = board[i-1][j-1]
+                    if el != 0:
+                        # self.state.assign((i,j), el)
+                        self.sudoku.assign(self.state,(i,j), el)
+
+        self.visited = 0
+
+    def solve(self):
+        fringe = [ self.state ]
+        flen = 1
+
+        print "Start state %d (len %d)" % (self.visited, flen)
+        print self.state
+
+        while fringe:
+            state = fringe.pop()
+            flen -= 1
+            # if self.visited % 1000 == 0:
+
+            print "\033[12A"
+            print "Checking state %d (len %d)" % (self.visited, flen)
+            print state
+
+            self.visited += 1
+            key, avail = availstrategy(state)
+            # all values set
+            if not avail:
+                # check if solves sudoku
+                # import pdb; pdb.set_trace()
+                solved = self.sudoku.check(state)
+                if solved:
+                    # solves sudoku
+                    return state
+                else:
+                    # doesn't solve, discard
+                    continue
+            for value in avail:
+                clone = state.clone()
+                self.sudoku.assignarc(clone, key, value)
+                # clone.nodes[key] = { value }
+                if self.sudoku.check(clone):
+                    fringe.append(clone)
+                    flen += 1
+
+        # no solution exists
+        return None
+
 simple = [[5,3,0,0,7,0,0,0,0],
          [6,0,0,1,9,5,0,0,0],
          [0,9,8,0,0,0,0,6,0],
@@ -369,6 +446,11 @@ if __name__ == "__main__":
         print solved
     elif sys.argv[1] == 'forward':
         f = Forward(board)
+        # import pdb; pdb.set_trace()
+        solved = f.solve()
+        print solved
+    elif sys.argv[1] == 'arc':
+        f = Arc(board)
         # import pdb; pdb.set_trace()
         solved = f.solve()
         print solved
