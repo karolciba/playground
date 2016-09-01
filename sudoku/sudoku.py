@@ -159,6 +159,23 @@ class Brute:
         # no solution exists
         return None
 
+def findbestavail(state):
+    best_score = 10
+    best_match = None, None
+    for key,values in state.nodes.items():
+        if len(values) < best_score and len(values) > 1:
+            best_score = len(values)
+            best_match =  key, values
+    return best_match
+
+def findavail(state):
+    for key,values in state.nodes.items():
+        if len(values) > 1:
+            return key, values
+    return None, None
+
+availstrategy = findbestavail
+
 class Filter:
     def __init__(self, board):
         self.sudoku = Sudoku()
@@ -167,24 +184,19 @@ class Filter:
 
     def solve(self):
 
-        def findavail(state):
-            for key,values in state.nodes.items():
-                if len(values) > 1:
-                    return key, values
-            return None, None
-
         fringe = [ self.state ]
         flen = 1
 
         while fringe:
             state = fringe.pop()
             flen -= 1
-            if self.visited % 1000 == 0:
-                print "Checking state %d (len %d)" % (self.visited, flen)
-                print state,
-                print "\033[11A"
+
+            print "Checking state %d (len %d)" % (self.visited, flen)
+            print state,
+            print "\033[11A"
+
             self.visited += 1
-            key, avail = findavail(state)
+            key, avail = availstrategy(state)
             # all values set
             if not avail:
                 # check if solves sudoku
@@ -221,13 +233,6 @@ class Forward:
         self.visited = 0
 
     def solve(self):
-
-        def findavail(state):
-            for key,values in state.nodes.items():
-                if len(values) > 1:
-                    return key, values
-            return None, None
-
         fringe = [ self.state ]
         flen = 1
 
@@ -238,11 +243,13 @@ class Forward:
             state = fringe.pop()
             flen -= 1
             # if self.visited % 1000 == 0:
+
             print "\033[12A"
             print "Checking state %d (len %d)" % (self.visited, flen)
             print state
+
             self.visited += 1
-            key, avail = findavail(state)
+            key, avail = availstrategy(state)
             # all values set
             if not avail:
                 # check if solves sudoku
@@ -319,11 +326,11 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print "Provide solver name [brute|filter|forward]"
+        print "Provide solver name (brute|filter|forward) [filename] [best|first]"
         sys.exit(1)
 
     board = simple
-    if len(sys.argv) == 3:
+    if len(sys.argv) >= 3:
         board = [ [0 for x in range(1,10)] for y in range(1,10) ]
         row = 0
         col = 0
@@ -344,6 +351,13 @@ if __name__ == "__main__":
                 row = 0
                 if col == 9:
                     break
+
+
+    if len(sys.argv) == 4:
+        if sys.argv[3] == 'best':
+            availstrategy = findbestavail
+        elif sys.argv[3] == 'first':
+            availstrategy = findavail
 
     if sys.argv[1] == 'brute':
         b = Brute(board)
