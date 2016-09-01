@@ -10,12 +10,13 @@ class State:
                 for i in range(1,10):
                     for j in range(1,10):
                         el = board[i-1][j-1]
-                        if el != 0:
+                        if el >=1 and el <=9:
                             self.assign((i,j), el)
         else:
             self.nodes = {}
     def assign(self, pos, value):
-        self.nodes[pos] = set([value])
+        if value >= 0 and value <= 9:
+            self.nodes[pos] = set([value])
     def clone(self):
         s = State(False)
         for key,value in self.nodes.items():
@@ -264,7 +265,7 @@ class Forward:
         # no solution exists
         return None
 
-board = [[5,3,0,0,7,0,0,0,0],
+simple = [[5,3,0,0,7,0,0,0,0],
          [6,0,0,1,9,5,0,0,0],
          [0,9,8,0,0,0,0,6,0],
          [8,0,0,0,6,0,0,0,3],
@@ -317,9 +318,32 @@ evil = [[7,2,5,0,4,0,0,0,0],
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) != 2:
+    if len(sys.argv) < 2:
         print "Provide solver name [brute|filter|forward]"
         sys.exit(1)
+
+    board = simple
+    if len(sys.argv) == 3:
+        board = [ [0 for x in range(1,10)] for y in range(1,10) ]
+        row = 0
+        col = 0
+        with open(sys.argv[2]) as f:
+            content = f.readlines()
+            for line in content:
+                for char in line:
+                    # print row, char,
+                    v = ord(char) - 48
+                    if v < 0 or v > 9:
+                        v = 0
+                    board[col][row] = v
+                    row += 1
+                    if (row == 9):
+                        break
+                # print "next"
+                col += 1
+                row = 0
+                if col == 9:
+                    break
 
     if sys.argv[1] == 'brute':
         b = Brute(board)
@@ -330,7 +354,8 @@ if __name__ == "__main__":
         solved = f.solve()
         print solved
     elif sys.argv[1] == 'forward':
-        f = Forward(hard)
+        f = Forward(board)
+        # import pdb; pdb.set_trace()
         solved = f.solve()
         print solved
     else:
