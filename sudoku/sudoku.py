@@ -435,6 +435,8 @@ if __name__ == "__main__":
             availstrategy = findbestavail
         elif sys.argv[3] == 'first':
             availstrategy = findavail
+        elif sys.argv[3] == 'equal':
+            availstrategy = findequalbestavail
 
     if sys.argv[1] == 'brute':
         b = Brute(board)
