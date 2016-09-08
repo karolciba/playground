@@ -26,12 +26,10 @@ class Planar:
 
         self._map = np.random.random(map_size + (vector_size, ))
         self._train = 0
-        self._coef = 0.1
-        self._delta = 10
+        self._coef = 0.2
+        self._delta = 4
 
     def train(self, vector):
-        # print "vector", vector
-
         self._train += 1
 
         bou_score = float('inf') # best maching unit
@@ -40,14 +38,9 @@ class Planar:
             for j in range(0, self._height):
                 score = 0
                 score = math.sqrt( sum( (a - b)**2 for a,b in zip(vector,self._map[i,j])))
-                # for k in range(0, self._length):
-                    # score += (self._map[i,j,k] - vector[k])**2
                 if score < bou_score:
                     bou_score = score
                     bou_index = (i,j)
-
-        # print "best matching", bou_index, bou_score
-        # print self._map[bou_index]
 
         min_x = max(bou_index[0] - self._delta, 0);
         max_x = min(bou_index[0] + self._delta, self._width)
@@ -57,47 +50,9 @@ class Planar:
         for i in range(min_x, max_x):
             for j in range(min_y, max_y):
                 for k in range(0, self._length):
-                    # print "before", self._map[i,j,k]
                     self._map[i,j,k] -= self._coef * (self._map[i,j,k] - vector[k])
-                    # print "after", self._map[i,j,k]
                     self._map[i,j,k] = max(self._map[i,j,k],0)
                     self._map[i,j,k] = min(self._map[i,j,k],1)
-        # print self._map[bou_index]
-
-
-        """
-        el_a = self._map - vector
-
-        el_square = np.multiply(el_a, el_a)
-
-        el_sum = np.sum(el_square, axis=2)
-
-        max_elem = np.argmax(el_sum)
-
-        max_ind = np.unravel_index(max_elem, el_sum.shape)
-
-        coef = [ 0.01, 0.01, 0.01 ]
-
-        delta = 10
-
-        min_x = max(max_ind[0] - delta, 0);
-        max_x = min(max_ind[0] + delta, self._map.shape[0]-1)
-        min_y = max(max_ind[1] - delta, 0);
-        max_y = min(max_ind[1] + delta, self._map.shape[1]-1)
-
-        map_slice = self._map[ min_x:max_x, min_y:max_y]
-        # print map_slice
-        # print self._map[max_ind]
-        map_slice += coef * (vector - map_slice)
-        print map_slice[ map_slice > 1]
-        import pdb; pdb.set_trace()
-        map_slice[ map_slice > 1.0] = 1.0
-        map_slice[ map_slice < 0.0] = 0.0
-        # print map_slice
-        # print self._map[max_ind]
-
-        # print "max index ", max_ind
-        """
 
     def clasify(self, vector):
         pass
