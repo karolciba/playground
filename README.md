@@ -22,14 +22,14 @@ Visualization tool needed for other projects.
 
 ## kohonen
 Exercises with Kohonen Self Organizing Maps. Mapping colour space to 2D graph,
-maping linear functions, etc.
+maping linear functions, etc. More in subdirectory [kohonen](kohonen/README.mb)
 
 ### color space
 Two dimensional kohonen map learning color space.
 [![color space](http://img.youtube.com/vi/x50dj8LxJyI/0.jpg)](https://youtu.be/x50dj8LxJyI)
-more in subdirectory [kohonen](kohonen/README.mb)
+CLICK TO PLAY
 
-To be done (in emulated space):
+To be done:
 - space learning "robotic arm"
 - balancing robot
 
