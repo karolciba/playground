@@ -9,6 +9,7 @@ function Paddle(x, y, width, height) {
   this.y = y;
   this.sx = 0;
   this.sy = 0;
+  this.pickups = 0;
   this.width = width;
   this.height = height;
 }
@@ -82,16 +83,17 @@ Reflex.prototype.after = function(game) {
 
 function Markov(paddle) {
   this.paddle = paddle;
+  this.pickups = 0;
   this.q_states = {}
   this.pre_state = null;
   this.post_state = null;
   this.action = 'stop';
   this.actions = ['stop', 'up', 'down'];
   this.alpha = 0.3;
-  this.factor = 0.1;
+  this.factor = 0.5;
   this.persev = 0.75;
 
-  this.teacher_counter = 1000000;
+  this.teacher_counter = 100000;
 }
 
 Markov.prototype.state_hash = function(game) {
@@ -194,19 +196,27 @@ Markov.prototype.update = function(game) {
 Markov.prototype.get_q_value = function(state, action) {
   var pair = [this.pre_state, this.action];
   if (! this.q_states[pair]) {
-    this.q_states[pair] = 0;
+    return 0;
+    // this.q_states[pair] = 0;
   }
   return this.q_states[pair];
 }
 
 Markov.prototype.after = function(game) {
-  var reward = game.living;
+  var pickups_delta = this.paddle.pickups - this.pickups;
+  this.pickups = this.paddle.pickups;
+  // var reward = game.living + 1000 * pickups_delta;
+  var reward = 1000 * pickups_delta;
   // this.post_state = this.state_hash(game);
   var pair = [this.pre_state, this.action];
-  if (! this.q_states[pair]) {
-    this.q_states[pair] = 0;
+  // if (! this.q_states[pair]) {
+  //   this.q_states[pair] = 0;
+  // }
+  // this.q_states[pair] = this.alpha * reward + (1-this.alpha)*this.q_states[pair];
+  var reward = this.alpha * reward + (1-this.alpha)*this.get_q_value(this.pre_state, this.action);
+  if (reward > 0) {
+    this.q_states[pair] = reward;
   }
-  this.q_states[pair] = this.alpha * reward + (1-this.alpha)*this.q_states[pair];
   // debugger;
 }
 
@@ -252,6 +262,7 @@ Ball.prototype.update = function(game) {
     // this.sy = -this.sy;
     this.x = game.player.paddle.x + game.player.paddle.width;
     this.sy += game.player.paddle.sy / 2;
+    game.player.paddle.pickups += 1;
     // this.sx += game.player.paddle.sy;
   } else if (this.x + this.width > game.opponent.paddle.x
             && this.y + this.height > game.opponent.paddle.y
@@ -260,6 +271,7 @@ Ball.prototype.update = function(game) {
     // this.sy = -this.sy;
     this.x = game.opponent.paddle.x - this.width;
     this.sy += game.opponent.paddle.sy / 2;
+    game.opponent.paddle.pickups += 1;
     // this.sx -= game.opponent.paddle.sy;
   } else if (this.x < 0) {
     game.opponent_wins += 1;
