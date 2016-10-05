@@ -194,7 +194,7 @@ Markov.prototype.update = function(game) {
 }
 
 Markov.prototype.get_q_value = function(state, action) {
-  var pair = [this.pre_state, this.action];
+  var pair = [state, this.action];
   if (! this.q_states[pair]) {
     return 0;
     // this.q_states[pair] = 0;
@@ -202,18 +202,35 @@ Markov.prototype.get_q_value = function(state, action) {
   return this.q_states[pair];
 }
 
+Markov.prototype.get_value = function(state) {
+  var best_value = -1;
+  var best_action = 'stop';
+  for (var key in this.actions) {
+    var action = this.actions[key];
+    var value = this.get_q_value(state, action);
+    if (value > best_value) {
+      best_value = value;
+      best_action = action;
+    }
+  }
+  return best_value;
+}
+
 Markov.prototype.after = function(game) {
   var pickups_delta = this.paddle.pickups - this.pickups;
   this.pickups = this.paddle.pickups;
   // var reward = game.living + 1000 * pickups_delta;
   var reward = 1000 * pickups_delta;
-  // this.post_state = this.state_hash(game);
+  var discount = 1;
+  this.post_state = this.state_hash(game);
   var pair = [this.pre_state, this.action];
   // if (! this.q_states[pair]) {
   //   this.q_states[pair] = 0;
   // }
   // this.q_states[pair] = this.alpha * reward + (1-this.alpha)*this.q_states[pair];
-  var reward = this.alpha * reward + (1-this.alpha)*this.get_q_value(this.pre_state, this.action);
+  var p = this.get_value(this.post_state);
+  var reward = this.alpha * (reward + discount * p)
+    + (1-this.alpha)*this.get_q_value(this.pre_state, this.action);
   if (reward > 0) {
     this.q_states[pair] = reward;
   }
