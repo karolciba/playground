@@ -90,6 +90,8 @@ function Markov(paddle) {
   this.alpha = 0.3;
   this.factor = 0.1;
   this.persev = 0.75;
+
+  this.teacher_counter = 1000000;
 }
 
 Markov.prototype.state_hash = function(game) {
@@ -107,9 +109,28 @@ Markov.prototype.state_hash = function(game) {
 }
 
 Markov.prototype.update = function(game) {
+    var i = document.getElementById("debug");
+
   this.pre_state = this.state_hash(game);
 
-    var i = document.getElementById("debug");
+  if (this.teacher_counter > 0) {
+    i.innerHTML += "<br/>teacher " + this.teacher_counter;
+
+    this.teacher_counter -= 1;
+    if (game.ball.y > this.paddle.y && game.ball.y < this.paddle.y + this.paddle.height) {
+      this.paddle.stop();
+      this.action = 'stop';
+    } else if (game.ball.y < this.paddle.y) {
+      this.paddle.move_down();
+      this.actiom = 'down';
+    } else {
+      this.paddle.move_up();
+      this.action = 'up';
+    }
+
+    return;
+  }
+
   // select random action
   if (this.factor > Math.random()) {
     var item = 'stop';
