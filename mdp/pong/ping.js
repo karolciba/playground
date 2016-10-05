@@ -88,7 +88,8 @@ function Markov(paddle) {
   this.action = 'stop';
   this.actions = ['stop', 'up', 'down'];
   this.alpha = 0.3;
-  this.factor = 0.7;
+  this.factor = 0.1;
+  this.persev = 0.75;
 }
 
 Markov.prototype.state_hash = function(game) {
@@ -111,8 +112,16 @@ Markov.prototype.update = function(game) {
     var i = document.getElementById("debug");
   // select random action
   if (this.factor > Math.random()) {
-    var item = this.actions[Math.floor(Math.random()*this.actions.length)];
-    this.action = item;
+    var item = 'stop';
+    if (this.persev > Math.random()) {
+      // stick to previous actuion
+      item = this.action;
+      i.innerHTML += "<br/>prandom " + item;
+    } else {
+      item = this.actions[Math.floor(Math.random()*this.actions.length)];
+      i.innerHTML += "<br/>rrandom " + item;
+      this.action = item;
+    }
     if (item == 'stop') {
       this.paddle.stop();
     } else if (item == 'down') {
@@ -124,7 +133,8 @@ Markov.prototype.update = function(game) {
   } else {
     var best_value = -1;
     var best_action = 'stop';
-    for (var action in this.actions) {
+    for (var key in this.actions) {
+      var action = this.actions[key];
       var value = this.get_q_value(this.pre_state, action);
       if (value > best_value) {
         best_value = value;
