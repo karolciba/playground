@@ -232,7 +232,7 @@ Markov.prototype.after = function(game) {
 
   if (""+this.pairs_history[0] != ""+pair) {
     this.pairs_history.unshift(pair);
-    if (this.pairs_history.length > 100) {
+    if (this.pairs_history.length > 10) {
       this.pairs_history.pop();
     }
   } else {
@@ -248,14 +248,14 @@ Markov.prototype.after = function(game) {
   if (score > 0) {
     this.q_states[pair] = score;
 
-    for (var i = 0; i < this.pairs_history.length; i++) {
+    for (var i = 1; i < this.pairs_history.length; i++) {
       var ppair = this.pairs_history[i];
       score = (1 - this.discount) * score;
       var previous = this.q_states[ppair];
       if (!previous) {
         previous = 0;
       }
-      this.q_states[ppair] = this.alpha * previous + (1 - this.alpha) * score;
+      this.q_states[ppair] = 0.90 * previous + 0.1 * score;
     }
 
   }
