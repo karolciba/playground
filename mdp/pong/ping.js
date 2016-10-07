@@ -92,6 +92,8 @@ function Markov(paddle) {
   this.alpha = 0.3;
   this.factor = 0.5;
   this.persev = 0.75;
+  this.discount = 0.9;
+  this.pairs_history = [];
 
   this.teacher_counter = 100000;
 }
@@ -124,7 +126,7 @@ Markov.prototype.update = function(game) {
       this.action = 'stop';
     } else if (game.ball.y < this.paddle.y) {
       this.paddle.move_down();
-      this.actiom = 'down';
+      this.action = 'down';
     } else {
       this.paddle.move_up();
       this.action = 'up';
@@ -221,18 +223,41 @@ Markov.prototype.after = function(game) {
   this.pickups = this.paddle.pickups;
   // var reward = game.living + 1000 * pickups_delta;
   var reward = 1000 * pickups_delta;
+  if (reward != 0) {
+    // debugger;
+  }
   var discount = 1;
   this.post_state = this.state_hash(game);
   var pair = [this.pre_state, this.action];
+
+  if (""+this.pairs_history[0] != ""+pair) {
+    this.pairs_history.unshift(pair);
+    if (this.pairs_history.length > 100) {
+      this.pairs_history.pop();
+    }
+  } else {
+    // debugger;
+  }
   // if (! this.q_states[pair]) {
   //   this.q_states[pair] = 0;
   // }
   // this.q_states[pair] = this.alpha * reward + (1-this.alpha)*this.q_states[pair];
   var p = this.get_value(this.post_state);
-  var reward = this.alpha * (reward + discount * p)
+  var score = this.alpha * (reward + discount * p)
     + (1-this.alpha)*this.get_q_value(this.pre_state, this.action);
-  if (reward > 0) {
-    this.q_states[pair] = reward;
+  if (score > 0) {
+    this.q_states[pair] = score;
+
+    for (var i = 0; i < this.pairs_history.length; i++) {
+      var ppair = this.pairs_history[i];
+      score = (1 - this.discount) * score;
+      var previous = this.q_states[ppair];
+      if (!previous) {
+        previous = 0;
+      }
+      this.q_states[ppair] = this.alpha * previous + (1 - this.alpha) * score;
+    }
+
   }
   // debugger;
 }
