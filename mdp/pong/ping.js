@@ -84,30 +84,32 @@ Reflex.prototype.after = function(game) {
 function Markov(paddle) {
   this.paddle = paddle;
   this.pickups = 0;
-  this.q_states = {}
+  this.q_states = q_states;
   this.pre_state = null;
   this.post_state = null;
   this.action = 'stop';
   this.actions = ['stop', 'up', 'down'];
-  this.alpha = 0.3;
+  this.alpha = 0.5;
   this.factor = 0.5;
   this.persev = 0.75;
-  this.discount = 0.9;
+  this.discount = 0.5;
   this.pairs_history = [];
 
-  this.teacher_counter = 100000;
+  this.teacher_counter = 1000000;
 }
 
 Markov.prototype.state_hash = function(game) {
-  var pos_step = 10;
+  var pos_step = 20;
+  var pad_step = 30;
   var speed_step = 4;
   var ball_x = Math.round(game.ball.x*pos_step/game.width);
   var ball_y = Math.round(game.ball.y*pos_step/game.height);
   var ball_sx = Math.round(game.ball.sx*speed_step/4);
   var ball_sy = Math.round(game.ball.sy*speed_step/4);
-  var player_y = Math.round(game.player.paddle.y*pos_step/game.height);
-  var opponent_y = Math.round(game.opponent.paddle.y*pos_step/game.height);
-  var key = [ball_x, ball_y, ball_sx, ball_sy, player_y, opponent_y ]
+  var player_y = Math.round(game.player.paddle.y*pad_step/game.height);
+  var opponent_y = Math.round(game.opponent.paddle.y*pad_step/game.height);
+  // var key = [ball_x, ball_y, ball_sx, ball_sy, player_y, opponent_y ]
+  var key = [ball_x, ball_y, ball_sx, ball_sy, player_y ]
 
   return key;
 }
@@ -156,16 +158,18 @@ Markov.prototype.update = function(game) {
     }
     i.innerHTML += "<br/>random " + item;
   } else {
-    var best_value = -1;
-    var best_action = 'stop';
-    for (var key in this.actions) {
-      var action = this.actions[key];
-      var value = this.get_q_value(this.pre_state, action);
-      if (value > best_value) {
-        best_value = value;
-        best_action = action;
-      }
-    }
+    var best_action = this.get_action(this.pre_state);
+    var best_value = this.get_value(this.pre_state);
+    // var best_value = -1;
+    // var best_action = 'stop';
+    // for (var key in this.actions) {
+    //   var action = this.actions[key];
+    //   var value = this.get_q_value(this.pre_state, action);
+    //   if (value > best_value) {
+    //     best_value = value;
+    //     best_action = action;
+    //   }
+    // }
 
     i.innerHTML += "<br/>best " + best_action + " " + best_value;
     var item = best_action;
@@ -196,20 +200,51 @@ Markov.prototype.update = function(game) {
 }
 
 Markov.prototype.get_q_value = function(state, action) {
-  var pair = [state, this.action];
-  if (! this.q_states[pair]) {
+  var stop = this.q_states[ [state, "stop"] ];
+  var down = this.q_states[ [state, "down"] ];
+  var up = this.q_states[ [state, "up"] ];
+
+  var pair = [state, action];
+  var value = this.q_states[pair];
+  if (! value) {
     return 0;
     // this.q_states[pair] = 0;
   }
-  return this.q_states[pair];
+  return value;
 }
 
-Markov.prototype.get_value = function(state) {
+Markov.prototype.get_action = function(state) {
+  var pairs = {};
+  for (var key in this.actions) {
+    var action = this.actions[key];
+    pairs[action] = this.get_q_value(state, action);
+  }
+
   var best_value = -1;
   var best_action = 'stop';
   for (var key in this.actions) {
     var action = this.actions[key];
-    var value = this.get_q_value(state, action);
+    var value = pairs[action];
+    if (value > best_value) {
+      best_value = value;
+      best_action = action;
+    }
+  }
+  return best_action;
+}
+
+Markov.prototype.get_value = function(state) {
+  var pairs = {};
+  for (var key in this.actions) {
+    var action = this.actions[key];
+    pairs[action] = this.get_q_value(state, action);
+  }
+
+  var best_value = -1;
+  var best_action = 'stop';
+  for (var key in this.actions) {
+    var action = this.actions[key];
+    var value = pairs[action];
     if (value > best_value) {
       best_value = value;
       best_action = action;
@@ -255,7 +290,10 @@ Markov.prototype.after = function(game) {
       if (!previous) {
         previous = 0;
       }
-      this.q_states[ppair] = 0.90 * previous + 0.1 * score;
+      var new_score = 0.9 * previous + 0.1 * score;
+      if (new_score > 1) {
+        this.q_states[ppair] = new_score;
+      }
     }
 
   }
