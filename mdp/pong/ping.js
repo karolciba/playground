@@ -91,7 +91,7 @@ function Markov(paddle) {
   this.action = 'stop';
   this.actions = ['stop', 'up', 'down'];
   this.alpha = 0.5;
-  this.factor = 0.2;
+  this.factor = 0.1;
   this.persev = 0.8;
   this.discount = 0.5;
   this.pairs_history = [];
@@ -205,7 +205,7 @@ Markov.prototype.get_q_value = function(state, action) {
   var down = this.q_states[ [state, "down"] ];
   var up = this.q_states[ [state, "up"] ];
 
-  var pair = [state, this.action];
+  var pair = [state, action];
   var value = this.q_states[pair];
   if (! value) {
     return 0;
@@ -226,12 +226,26 @@ Markov.prototype.get_action = function(state) {
   for (var key in this.actions) {
     var action = this.actions[key];
     var value = pairs[action];
+    // var range = best_value * 0.05;
+    // if ( Math.abs((best_value - value)) < Math.abs(range)) {
+    //   best_value = value;
+    //   best_actions.push(action);
+    // } else {
+    //   if (value > best_value) {
+    //     best_value = value;
+    //     best_actions = [ action ];
+    //   } else {
+    //   }
+    // }
     if (value > best_value) {
       best_value = value;
       best_actions = [ action ];
     } else {
-      best_value = value;
-      best_actions.push(action);
+      if (value == best_value) {
+        best_value = value;
+        best_actions.push(action);
+      } else {
+      }
     }
   }
 
