@@ -1,5 +1,6 @@
 <html>
   <head>
+    <script src="database.js"></script>
     <script src="ping.js"></script>
   </head>
   <body onLoad="init();">
@@ -9,6 +10,9 @@
 					<canvas id="canvas" width="200" height="100"></canvas> 
 				</td>
 				<td>
+					 <button type="button" onClick="game.player.teacher = !game.player.teacher;">Teacher State</button> 
+					 <button type="button" onClick="game.player.q_states = {};">Clear data</button> 
+					 <button type="button" onClick="game.paused = !game.paused">Pause</button> 
 					<span id="span"></span>
 					<span id="debug"></span>
 				</td>
