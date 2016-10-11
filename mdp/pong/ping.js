@@ -221,6 +221,9 @@ Markov.prototype.get_action = function(state) {
     pairs[action] = this.get_q_value(state, action);
   }
 
+  var i = document.getElementById("debug");
+  i.innerHTML += "<br /> actions: up " + pairs['up'] + " stop " + pairs['stop'] + " down " + pairs['down'];
+
   var best_value = Number.NEGATIVE_INFINITY;
   var best_actions = [];
   for (var key in this.actions) {
