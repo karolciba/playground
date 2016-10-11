@@ -2,7 +2,6 @@
 Playground on various subjects.
 
 ## sudoku
-
 I can't play sudoku, but can I write program that can play sudoku?
 
 Current solvers are:
@@ -13,6 +12,12 @@ Current solvers are:
 - arc consistency checking
 
 Further notes in subdirectory [sudoku](sudoku/README.md)
+
+## Markov Decision Process
+Playing with MDP. AI learning to play classical PONG game.
+Available in browser [Pong AI](https://rawcdn.githack.com/karolciba/playground/master/mdp/pong/pong.html)
+
+Further notes in subdirectory [mdp](mdk/README.md)
 
 ## eucliderer
 Graphics renderer capable of drawing geometry primitives: dots, lines, boxes, curves.
