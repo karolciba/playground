@@ -497,19 +497,31 @@ Game.prototype.update = function() {
   this.opponent.after(this);
 }
 
+silent = false;
+debug = document.getElementById("debug");
+
 function init() {
   game = new Game();
   last_time = 0;
   animator = function() {
     var d = new Date();
     var n = d.getTime(); 
-    if (n - last_time < 1000/60 || game.paused) {
+    var delta = n - last_time;
+    if (!silent && (delta < 1000/60 || game.paused)) {
       // skip
     } else {
+      last_time = n;
       game.update();
-      game.render();
+      if (!silent) {
+        game.render();
+      }
     }
-    animate(animator);
+    // animate(animator);
+    var timeout = 1000/60;
+    if (silent) {
+      timeout = 0.0001;
+    }
+    window.setTimeout(animator, timeout)
   };
   animator();
 }
