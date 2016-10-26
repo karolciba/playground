@@ -42,6 +42,7 @@ function sigmoid(x) {
 }
 function d_sigmoid(x) {
 	//var y = sigmoid(x)
+	//return y*(1-y);
 	return x*(1-x);
 }
 
@@ -98,7 +99,7 @@ Neuron.prototype.backward = function(vector, out, exp) {
 	return lerrors;
 }
 
-function train(vector) {
+function train(vector, score) {
 	var out_hidden = Array(hidden_count + 1);
 	// bias
 	out_hidden[hidden_count] = 1.0;
@@ -110,18 +111,39 @@ function train(vector) {
 		out_hidden[i] = score;
 	}
 
-	// forwar out layer
+	// forward out layer
 	var out = out_neuron.forward(out_hidden);
 
-	
+	// bacward out layer
+	var error = out * score;
+	var delta = error * d_sigmoid(out);
 
+	var lerror = Array(out_neuron.size - 1);
+	for (var i = 0; i < out_neuron.size - 1; i++) {
+		lerror[i] = delta * out_neuron.weights[i];
+	}
 
-	console.log(out_hidden);
-	console.log(out);
+	// train out neuron
+	for (var i = 0; i < out_neuron.size; i++) {
+		out_neuron.weights[i] += out_hidden[i] * delta;
+	}
+
+	// train hidden
+	for (var i = 0; i < hidden_count; i++) {
+		var neuron = hidden_neurons[i];
+		var herror = lerror[i];
+		var ldelta = herror * d_sigmoid(out_hidden[i]);
+		for (var j = 0; j < neuron.size; j++) {
+			neuron.weights[i] += vector[i] * ldelta;
+		}
+	}
+
+	//console.log(out_hidden);
+	//console.log(out);
 	return out;
 }
 
-hidden_count = 10;
+hidden_count = 4;
 hidden_neurons = Array(hidden_count);
 
 hidden_canvas = Array(hidden_count);
@@ -147,6 +169,95 @@ function init() {
 	}
 }
 
+
+function test(count) {
+	function and(x,y) {
+		if (x==1 && y==1) {
+			return 1;
+		}
+		return 0;
+	}
+	function xor(x,y) {
+		if (x == 0 && y == 1)
+			return 1;
+		if (x == 1 && y == 0)
+			return 1;
+		return 0;
+	}
+
+	var bool = xor;
+
+	function random_v() {
+		var out = Array(3);
+		out[2] = 1;
+		out[1] = Math.random() > 0.5 ? 1 : 0;
+		out[0] = Math.random() > 0.5 ? 1 : 0;
+		return out;
+	}
+
+	//debugger;
+	if (!count) {
+		count = 2;
+	}
+	var neurons = Array(count);
+	for (var i = 0; i < count; i++) {
+		neurons[i] = new Neuron(3);
+	}
+	var out_neuron = new Neuron(count+1);
+	
+
+	for (var iters = 0; iters < 100000; iters++) {
+		var vector = random_v();
+		var out_hidden = Array(count+1);
+		out_hidden[count] = 1;
+		// forward propagation hidden layer
+		for (var i = 0; i < count; i++) {
+			var neuron = neurons[i];
+			var score = neuron.forward(vector);
+			out_hidden[i] = score;
+		}
+
+		// forward out layer
+		var out = out_neuron.forward(out_hidden);
+
+		// bacward out layer
+		var expected = bool(vector[0],vector[1]);
+
+		var error = expected - out;
+
+		var delta = error * d_sigmoid(out);
+
+		if (iters % 1000 == 0) {
+			console.log(vector,expected,out,error,delta);
+		}
+
+		var lerror = Array(out_neuron.size - 1);
+		for (var i = 0; i < out_neuron.size - 1; i++) {
+			lerror[i] = delta * out_neuron.weights[i];
+		}
+
+		// train out neuron
+		for (var i = 0; i < out_neuron.size; i++) {
+			out_neuron.weights[i] += out_hidden[i] * delta;
+		}
+
+		// train hidden
+		for (var i = 0; i < count; i++) {
+			var neuron = neurons[i];
+			var herror = lerror[i];
+			var ldelta = herror * d_sigmoid(out_hidden[i]);
+			for (var j = 0; j < neuron.size; j++) {
+				neuron.weights[j] += vector[j] * ldelta;
+			}
+		}
+	}
+
+	console.log(out_neuron.weights); //, neurons[0].weights, neurons[1].weights, neurons[2].weights, neurons[3].weights);
+	for (var i = 0; i < count; i++) {
+		console.log(neurons[i].weights);
+	}
+}
+
 function visualize() {
 	for (var i = 0; i < hidden_count; i++) {
 		hidden_neurons[i].visualize(hidden_context[i],width, height);
@@ -169,16 +280,27 @@ for (var i = 0; i < history_length; i++) {
 }
 
 r.old_update = r.update;
+iter = 0;
 r.update = function() {
 	var vector = vectorize(context, width, height);
-	history_vector.shift();
+	var old_vector = history_vector.shift();
 	history_vector.push(vector);
-	console.log("update");
+	//console.log("update");
 	r.old_update();
+	if (!r.crashed) {
+		iter++;
+		train(old_vector, 0.1);
+		if (iter >= 60) {
+			visualize();
+		}
+	} else {
+
+	}
+	
 }
 
 // hidden_neurons[0].visualize(context, width, height);
-
+// for(var i = 0; i < 10; i++) { train(v,0.1); visualize() }
 /*
 function loop() { 
 	r.tRex.startJump(r.currentSpeed); 
