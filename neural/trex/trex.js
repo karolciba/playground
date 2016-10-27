@@ -99,6 +99,24 @@ Neuron.prototype.backward = function(vector, out, exp) {
 	return lerrors;
 }
 
+function forward(vector) {
+	var out_hidden = Array(hidden_count + 1);
+	// bias
+	out_hidden[hidden_count] = 1.0;
+
+	// forward propagation hidden layer
+	for (var i = 0; i < hidden_count; i++) {
+		var neuron = hidden_neurons[i];
+		var score = neuron.forward(vector);
+		out_hidden[i] = score;
+	}
+
+	// forward out layer
+	var out = out_neuron.forward(out_hidden);
+
+	return out;
+}
+
 function train(vector, score) {
 	var out_hidden = Array(hidden_count + 1);
 	// bias
@@ -115,8 +133,9 @@ function train(vector, score) {
 	var out = out_neuron.forward(out_hidden);
 
 	// bacward out layer
-	var error = out * score;
-	var delta = error * d_sigmoid(out);
+	//var error = out * score;
+	var error = score;
+	var delta = 0.001 * error * d_sigmoid(out);
 
 	var lerror = Array(out_neuron.size - 1);
 	for (var i = 0; i < out_neuron.size - 1; i++) {
@@ -134,7 +153,7 @@ function train(vector, score) {
 		var herror = lerror[i];
 		var ldelta = herror * d_sigmoid(out_hidden[i]);
 		for (var j = 0; j < neuron.size; j++) {
-			neuron.weights[i] += vector[i] * ldelta;
+			neuron.weights[j] += vector[j] * ldelta;
 		}
 	}
 
@@ -143,7 +162,7 @@ function train(vector, score) {
 	return out;
 }
 
-hidden_count = 4;
+hidden_count = 16;
 hidden_neurons = Array(hidden_count);
 
 hidden_canvas = Array(hidden_count);
@@ -274,27 +293,57 @@ fps = 60;
 history_length = 2 * fps;
 history_vector = [];
 
-for (var i = 0; i < history_length; i++) {
-	var vector = vectorize(context, width, height);
-	history_vector.push(vector);
-}
+// for (var i = 0; i < history_length; i++) {
+// 	var vector = vectorize(context, width, height);
+// 	history_vector.push(vector);
+// }
 
 r.old_update = r.update;
 iter = 0;
 r.update = function() {
 	var vector = vectorize(context, width, height);
-	var old_vector = history_vector.shift();
-	history_vector.push(vector);
+	//var old_vector = history_vector.shift();
+	//history_vector.push(vector);
+
 	//console.log("update");
 	r.old_update();
-	if (!r.crashed) {
+	if (!r.crashed) { //} && !r.paused && r.playing) {
 		iter++;
-		train(old_vector, 0.1);
-		if (iter >= 60) {
+		// train(old_vector, 0.1);
+		// debugger;
+		if (iter % 600 == 0) {
+
 			visualize();
+			console.log(iter, out_neuron.weights);
+		}
+		var score = forward(vector);
+
+		var action = Math.random() < score ? 1 : 0;
+		if (action == 1) {
+			console.log("jump",score);
+			r.tRex.startJump(r.currentSpeed);
+		} else {
+			console.log("dont jump",score);
+
+		}
+		history_vector.push( [vector, action] );
+		if (history_vector.length > history_length) {
+			var v = history_vector.shift();
+			var error = (v[1] == 1) ? 0.00001 : -0.00001;
+			//debugger;
+			train(v[0], error);
 		}
 	} else {
-
+		//iter = 0;
+		console.log("crashed", r.crashed, r.paused, r.playing);
+		for (var i = 0; i < history_vector.length; i++) {
+			//console.log("train history", i)
+			var v = history_vector.pop();
+			var error = (v[1] == 1) ? 0.001 : -0.010;
+			error = -1 * error;
+			train(v[0], error);
+		}
+		this.restart();
 	}
 	
 }
