@@ -99,7 +99,7 @@ Neuron.prototype.backward = function(vector, out, exp) {
 	return lerrors;
 }
 
-function forward(vector) {
+function forward(vector, out_neuron) {
 	var out_hidden = Array(hidden_count + 1);
 	// bias
 	out_hidden[hidden_count] = 1.0;
@@ -117,7 +117,7 @@ function forward(vector) {
 	return out;
 }
 
-function train(vector, error) {
+function train(vector, error, out_neuron) {
 	var out_hidden = Array(hidden_count + 1);
 	// bias
 	out_hidden[hidden_count] = 1.0;
@@ -162,13 +162,14 @@ function train(vector, error) {
 	return out;
 }
 
-hidden_count = 6;
+hidden_count = 8;
 hidden_neurons = Array(hidden_count);
 
 hidden_canvas = Array(hidden_count);
 hidden_context = Array(hidden_count);
 
-out_neuron = new Neuron(hidden_count + 1);
+jump_neuron = new Neuron(hidden_count + 1);
+run_neuron = new Neuron(hidden_count + 1);
 
 history_length = 50;
 
@@ -334,6 +335,8 @@ iter = 0;
 jumps = 0;
 runs = 0;
 pause = false;
+last_run_score = 0;
+last_jump_score = 0;
 
 uparr = { keyCode: 38, type: 'keydown', preventDefault: function() {} };
 downarr = { keyCode: 40, type: 'keyup', preventDefault: function() {} };
@@ -351,17 +354,34 @@ r.update = function() {
 		iter++;
 		// train(old_vector, 0.1);
 		// debugger;
+		/*
 		if (iter % 600 == 0) {
 
 			visualize();
-			console.log(iter, jumps, runs, out_neuron.weights);
+			console.log(iter, jumps, runs, jumps/(jumps+runs), "jump", last_jump_score, "run", last_run_score);
+			console.log("jumps", jump_neuron.weights);
+			console.log("run ", run_neuron.weights);
 		}
+		*/
+
+		var jump_score = forward(vector, jump_neuron);
+		var run_score = forward(vector, run_neuron);
+
+		last_jump_score = jump_score;
+		last_run_score = run_score;
+
+		var rand = Math.random() * (jump_score + run_score);
 
 
-		var score = forward(vector);
-
-		var rand = Math.random();
-		var action =  rand < score ? 1 : 0;
+		//var rand = Math.random();
+		//var action =  rand < score ? 1 : 0;
+		if (rand < jump_score) {
+			action = 1;
+			score = jump_score;
+		} else {
+			action = 0;
+			score = run_score;
+		}
 
 		if (action == 1) {
 			//console.log("jump", rand, score);
@@ -379,14 +399,29 @@ r.update = function() {
 			//console.log("dont jump", rand, score);
 
 		}
-		history_vector.push( [vector, action] );
+		history_vector.push( [vector, action, score] );
+
 		if (history_vector.length > history_length) {
 			var v = history_vector.shift();
-			var error = (v[1] == 1) ? 0.001 : -0.001;
-			//debugger;
-			train(v[0], error);
+			var action = v[1];
+			var score = v[2];
+			var rate = 0.01;
+			var error = rate*(1 - score); // 0.001
+			if (action == 1) {
+				//debugger;
+				train(v[0], error, jump_neuron);
+			} else {
+				train(v[0], error, run_neuron);
+			}
 		}
 	} else {
+		if (iter % 1000 == 0) {
+			console.clear();
+		}
+		visualize();
+			console.log(iter, jumps, runs, jumps/(jumps+runs), "jump", last_jump_score, "run", last_run_score);
+			console.log("jumps", jump_neuron.weights);
+			console.log("run ", run_neuron.weights);
 		jumps = 0;
 		runs = 0;
 		//iter = 0;
@@ -394,9 +429,17 @@ r.update = function() {
 		for (var i = 0; i < history_vector.length; i++) {
 			//console.log("train history", i)
 			var v = history_vector.pop();
-			var error = (v[1] == 1) ? 0.01 : -0.01;
-			error = -1 * error;
-			train(v[0], error);
+			var action = v[1];
+			var score = v[2];
+			var rate = 0.01;
+			var error = rate*(0 - score); //-0.01;
+
+			//debugger;
+			if (action == 1) {
+				train(v[0], error, jump_neuron);
+			} else {
+				train(v[0], error, run_neuron);
+			}
 			drawvector(hidden_context[hidden_count + 1 + i], v[0]);
 			pause = true;
 		}
