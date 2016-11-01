@@ -99,14 +99,14 @@ Neuron.prototype.backward = function(vector, out, exp) {
 	return lerrors;
 }
 
-function forward(vector, out_neuron) {
-	var out_hidden = Array(hidden_count + 1);
+function forward(vector, out_neuron, neurons) {
+	var out_hidden = Array(neurons.length + 1);
 	// bias
-	out_hidden[hidden_count] = 1.0;
+	out_hidden[neurons.length] = 1.0;
 
 	// forward propagation hidden layer
-	for (var i = 0; i < hidden_count; i++) {
-		var neuron = hidden_neurons[i];
+	for (var i = 0; i < neurons.length; i++) {
+		var neuron = neurons[i];
 		var score = neuron.forward(vector);
 		out_hidden[i] = score;
 	}
@@ -117,14 +117,14 @@ function forward(vector, out_neuron) {
 	return out;
 }
 
-function train(vector, error, out_neuron) {
-	var out_hidden = Array(hidden_count + 1);
+function train(vector, error, out_neuron, neurons) {
+	var out_hidden = Array(neurons.length + 1);
 	// bias
-	out_hidden[hidden_count] = 1.0;
+	out_hidden[neurons.length] = 1.0;
 
 	// forward propagation hidden layer
-	for (var i = 0; i < hidden_count; i++) {
-		var neuron = hidden_neurons[i];
+	for (var i = 0; i < neurons.length; i++) {
+		var neuron = neurons[i];
 		var score = neuron.forward(vector);
 		out_hidden[i] = score;
 	}
@@ -148,8 +148,8 @@ function train(vector, error, out_neuron) {
 	}
 
 	// train hidden
-	for (var i = 0; i < hidden_count; i++) {
-		var neuron = hidden_neurons[i];
+	for (var i = 0; i < neurons.length; i++) {
+		var neuron = neurons[i];
 		var herror = lerror[i];
 		var ldelta = herror * d_sigmoid(out_hidden[i]);
 		for (var j = 0; j < neuron.size; j++) {
@@ -164,12 +164,14 @@ function train(vector, error, out_neuron) {
 
 hidden_count = 8;
 hidden_neurons = Array(hidden_count);
+jump_hidden = Array(hidden_count/2);
+run_hidden = Array(hidden_count/2);
 
 hidden_canvas = Array(hidden_count);
 hidden_context = Array(hidden_count);
 
-jump_neuron = new Neuron(hidden_count + 1);
-run_neuron = new Neuron(hidden_count + 1);
+jump_neuron = new Neuron(hidden_count/2 + 1);
+run_neuron = new Neuron(hidden_count/2 + 1);
 
 history_length = 50;
 
@@ -188,6 +190,12 @@ function init() {
 		hidden_neurons[i] = neuron;
 		hidden_context[i]= context;
 		hidden_canvas[i] = canvas;
+	}
+	for (var k = 0; k < hidden_count/2; k++) {
+		jump_hidden[k] = hidden_neurons[k];
+	}
+	for (var l = 0; l < hidden_count/2; l++) {
+		run_hidden[l] = hidden_neurons[hidden_count/2 + l];
 	}
 	for (var j = 0; j < history_length; j++) {
 		var canvas = document.createElement("canvas");
@@ -291,7 +299,7 @@ function test(count) {
 }
 
 function visualize() {
-	for (var i = 0; i < hidden_count; i++) {
+	for (var i = 0; i < hidden_neurons.length; i++) {
 		hidden_neurons[i].visualize(hidden_context[i],width, height);
 	}
 }
@@ -321,7 +329,7 @@ visualize();
 v = vectorize(context, width, height);
 n = hidden_neurons[0];
 
-fps = 20;
+fps = 30;
 history_length = 2 * fps;
 history_vector = [];
 
@@ -363,9 +371,10 @@ r.update = function() {
 			console.log("run ", run_neuron.weights);
 		}
 		*/
+		//debugger;
 
-		var jump_score = forward(vector, jump_neuron);
-		var run_score = forward(vector, run_neuron);
+		var jump_score = forward(vector, jump_neuron, jump_hidden);
+		var run_score = forward(vector, run_neuron, run_hidden);
 
 		last_jump_score = jump_score;
 		last_run_score = run_score;
@@ -409,9 +418,9 @@ r.update = function() {
 			var error = rate*(1 - score); // 0.001
 			if (action == 1) {
 				//debugger;
-				train(v[0], error, jump_neuron);
+				train(v[0], error, jump_neuron, jump_hidden);
 			} else {
-				train(v[0], error, run_neuron);
+				train(v[0], error, run_neuron, run_hidden);
 			}
 		}
 	} else {
@@ -436,9 +445,9 @@ r.update = function() {
 
 			//debugger;
 			if (action == 1) {
-				train(v[0], error, jump_neuron);
+				train(v[0], error, jump_neuron, jump_hidden);
 			} else {
-				train(v[0], error, run_neuron);
+				train(v[0], error, run_neuron, run_hidden);
 			}
 			drawvector(hidden_context[hidden_count + 1 + i], v[0]);
 			pause = true;
