@@ -63,11 +63,12 @@ Neuron.prototype.visualize = function(context, width, height) {
 	for (var i = 0; i < height; i++) {
 		for (var j = 0; j < width; j++) {
 			var index = i * width + j;
+			var sign = this.weights[index] > 0 ? 1 : -1;
 			var value = (this.weights[index] - min)/max * delta;
-			data.data[4*index] = value;
-			data.data[4*index+1] = value;
-			data.data[4*index+2] = value;
-			data.data[4*index+3] = value;
+			data.data[4*index] =  sign > 0 ? value : 0;
+			data.data[4*index+1] = 0; //value;
+			data.data[4*index+2] = sign <= 0 ? value : 0;
+			data.data[4*index+3] = 255;// value;
 		}
 	}
 	context.putImageData(data, 0, 0);
@@ -171,11 +172,11 @@ hidden_context = Array(hidden_count);
 jump_neuron = new Neuron(hidden_count + 1);
 run_neuron = new Neuron(hidden_count + 1);
 
-history_length = 50;
+history_length = 20;
 
 function init() {
 	var tag = document.getElementById("main-message");
-	tag.innerHTML = "";
+	tag.innerHTML = '<div id="dropZone" style="width: 100px; height: 100px; background-color: red"></div>';
 	var i = 0;
 	for (i = 0; i < hidden_count; i++){
 		var canvas = document.createElement("canvas");
@@ -309,7 +310,7 @@ function drawvector(context, vector) {
 			data.data[4*index] = value;
 			data.data[4*index+1] = value;
 			data.data[4*index+2] = value;
-			data.data[4*index+3] = value;
+			data.data[4*index+3] = 255;//value;
 		}
 	}
 	context.putImageData(data, 0, 0);
@@ -318,7 +319,76 @@ function drawvector(context, vector) {
 init();
 visualize();
 
+function vector_diff(first, second) {
+	var out = Array(first.length);
+	for (var i = 0; i < first.length; i++) {
+		out[i] = first[i] - second[i];
+	}
+	return out;
+}
+
+function merge_vectors(first, second) {
+	var out = Array(first.length);
+	for (var i = 0; i < height; i++) {
+		for (var j = 0; j < width/2; j++) {
+			var index = i * width + j;
+			out[index] = first[index];
+		}
+	}
+	for (var i = 0; i < height; i++) {
+		for (var j = 0; j < width/2; j++) {
+			var index = i * width + j;
+			out[index + width/2] = second[index];
+		}
+	}
+	return out;
+}
+
+
+function merge_history(vector, history_vector) {
+	var line = height - 11;
+	//line = 11;
+	var len = 10;
+	//debugger;
+	for (var i = 0; i < history_vector.length; i++) {
+		var hist = history_vector[i];
+		var action = hist[1];
+		if (action == 1) {
+
+			for (var j = 0; j < 10; j++) {
+				var index = (line - j) * width + len * i;
+				for (var k = 0; k < len; k++) {
+					vector[index + k] = 1;
+				}
+
+				index = (line + j) * width + len * i;
+				for (var k = 0; k < len; k++) {
+					vector[index + k] = 0;
+				}
+			}
+
+		} else {
+
+			for (var j = 0; j < 10; j++) {
+				var index = (line - j) * width + len * i;
+				for (var k = 0; k < len; k++) {
+					vector[index + k] = 0;
+				}
+
+				index = (line + j) * width + len * i;
+				for (var k = 0; k < len; k++) {
+					vector[index + k] = 1;
+				}
+			}
+
+		}
+	}
+	return vector;
+}
+
+
 v = vectorize(context, width, height);
+previous_vector = null;
 n = hidden_neurons[0];
 
 fps = 20;
@@ -341,7 +411,6 @@ last_jump_score = 0;
 uparr = { keyCode: 38, type: 'keydown', preventDefault: function() {} };
 downarr = { keyCode: 40, type: 'keyup', preventDefault: function() {} };
 r.update = function() {
-	var vector = vectorize(context, width, height);
 	//var old_vector = history_vector.shift();
 	//history_vector.push(vector);
 
@@ -351,6 +420,15 @@ r.update = function() {
 		//debugger;
 	}
 	if (!r.crashed) { //} && !r.paused && r.playing) {
+		var current_vector = vectorize(context, width, height);
+		if (!previous_vector) {
+			previous_vector = current_vector;
+		}
+
+		var vector = merge_vectors(current_vector, previous_vector);
+		vector = merge_history(vector, history_vector);
+		previous_vector = current_vector;
+
 		iter++;
 		// train(old_vector, 0.1);
 		// debugger;
@@ -415,6 +493,7 @@ r.update = function() {
 			}
 		}
 	} else {
+		previous_vector = null;
 		if (iter % 1000 == 0) {
 			console.clear();
 		}
@@ -440,6 +519,7 @@ r.update = function() {
 			} else {
 				train(v[0], error, run_neuron);
 			}
+			//debugger;
 			drawvector(hidden_context[hidden_count + 1 + i], v[0]);
 			pause = true;
 		}
