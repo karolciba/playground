@@ -174,7 +174,7 @@ hidden_context = Array(hidden_count);
 jump_neuron = new Neuron(hidden_count/2 + 1);
 run_neuron = new Neuron(hidden_count/2 + 1);
 
-history_length = 20;
+history_length = 60;
 
 function init() {
 	var tag = document.getElementById("main-message");
@@ -354,16 +354,17 @@ function merge_vectors(first, second) {
 
 
 function merge_history(vector, history_vector) {
-	var line = height - 11;
+	var high = 5;
+	var line = height - high;
 	//line = 11;
-	var len = 10;
+	var len = 5;
 	//debugger;
 	for (var i = 0; i < history_vector.length; i++) {
 		var hist = history_vector[i];
 		var action = hist[1];
 		if (action == 1) {
 
-			for (var j = 0; j < 10; j++) {
+			for (var j = 0; j < high; j++) {
 				var index = (line - j) * width + len * i;
 				for (var k = 0; k < len; k++) {
 					vector[index + k] = 1;
@@ -377,7 +378,7 @@ function merge_history(vector, history_vector) {
 
 		} else {
 
-			for (var j = 0; j < 10; j++) {
+			for (var j = 0; j < high; j++) {
 				var index = (line - j) * width + len * i;
 				for (var k = 0; k < len; k++) {
 					vector[index + k] = 0;
