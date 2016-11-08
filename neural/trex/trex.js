@@ -439,6 +439,7 @@ r.update = function() {
 		}
 		visualize();
 		trained_vectors = [];
+		actions_vectors = [];
 
 			//console.log("jumps", jump_neuron.weights);
 			//console.log("run ", run_neuron.weights);
@@ -454,6 +455,13 @@ r.update = function() {
 			var neuron = v[3];
 			var error = rate*(0 - score); //-0.01;
 
+			if ( trained_vectors.indexOf(neuron) > -1 ) {
+
+			} else {
+				trained_vectors.push(neuron);
+				actions_vectors.push(action == 1 ? "jump" : "run");
+			}
+
 			//console.log(action == 1 ? "jump" : "run", score, neuron.weights);
 			//debugger;
 			if (action == 1) {
@@ -466,6 +474,9 @@ r.update = function() {
 			pause = true;
 		}
 		console.log(iter, jumps, runs, jumps/(jumps+runs), "jump", last_jump_score, "run", last_run_score);
+		for (var i = 0; i < trained_vectors.length; i++) {
+			console.log("neuron", actions_vectors[i], jump_neurons.indexOf(trained_vectors[i]), run_neurons.indexOf(trained_vectors[i]), trained_vectors[i].weights);
+		}
 		// for (var i = 0; i < run_neurons.length; i++) {
 		// 	console.log("run neuron", i, run_neurons[i].weights);
 		// }
