@@ -29,26 +29,33 @@ def pairgen():
         yield g
     raise StopIteration
 
-def boys(number):
+def anypairgen():
+    genders = ['B', 'G']
+    boys = 0
+    girls = 0
+    while boys < 2 and girls < 2:
+        g = random.choice(genders)
+        if g == 'B':
+            boys += 1
+        if g == 'G':
+            girls += 1
+        yield g
+    raise StopIteration
+
+def twoboysgen():
+    genders = ['B', 'G']
+    boys = 0
+    while boys < 2:
+        g = random.choice(genders)
+        if g == 'B':
+            boys += 1
+        yield g
+    raise StopIteration
+
+def stats(gen = boygen, number = 1000):
     lengths = []
     for x in xrange(number):
-        s = sum(1 for x in boygen())
-        lengths.append(s)
-
-
-    import matplotlib.pyplot as plt
-
-    m = max(lengths)
-    plt.hist(lengths, bins = m)
-    plt.show()
-
-    return sum(lengths)/float(len(lengths)), max(lengths)
-
-
-def pairs(number):
-    lengths = []
-    for x in xrange(number):
-        s = sum(1 for x in pairgen())
+        s = sum(1 for x in gen())
         lengths.append(s)
 
 
