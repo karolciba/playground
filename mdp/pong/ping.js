@@ -91,27 +91,29 @@ function Markov(paddle) {
   this.action = 'stop';
   this.actions = ['stop', 'up', 'down'];
   this.alpha = 0.5;
-  this.factor = 0.1;
+  this.factor = 0.2;
   this.persev = 0.8;
   this.discount = 0.5;
   this.pairs_history = [];
-  this.retrospection = 20;
+  this.retrospection = 0;
 
   this.teacher = false;
 }
 
 Markov.prototype.state_hash = function(game) {
-  var pos_step = 30;
-  var pad_step = 30;
+  var pos_step = 20;
+  var pad_step = 15;
   var speed_step = 4;
   var ball_x = Math.round(game.ball.x*pos_step/game.width);
-  var ball_y = Math.round(game.ball.y*pos_step/game.height);
+  //var ball_y = Math.round(game.ball.y*pos_step/game.height);
   var ball_sx = Math.round(game.ball.sx*speed_step/4);
   var ball_sy = Math.round(game.ball.sy*speed_step/4);
-  var player_y = Math.round(game.player.paddle.y*pad_step/game.height);
-  var opponent_y = Math.round(game.opponent.paddle.y*pad_step/game.height);
+  //var player_y = Math.round(game.player.paddle.y*pad_step/game.height);
+  //var opponent_y = Math.round(game.opponent.paddle.y*pad_step/game.height);
+  var rel_player_y = Math.round((game.ball.y-game.player.paddle.y)*pad_step/game.height);
+  //var rel_opponent_y = Math.round((game.ball.y-game.opponent.paddle.y)*pad_step/game.height);
   // var key = [ball_x, ball_y, ball_sx, ball_sy, player_y, opponent_y ]
-  var key = [ball_x, ball_y, ball_sx, ball_sy, player_y ]
+  var key = [ball_x, rel_player_y, ball_sx, ball_sy]
 
   return key;
 }
@@ -502,11 +504,18 @@ debug = document.getElementById("debug");
 
 function init() {
   game = new Game();
-  last_time = 0;
+  framerate = document.getElementById("framerate");
+  var d = new Date();
+  var n = d.getTime(); 
+  var last_time = n;
+  var delta = n - last_time;
+  var prevrate = delta;
+
   animator = function() {
-    var d = new Date();
-    var n = d.getTime(); 
-    var delta = n - last_time;
+    d = new Date();
+    n = d.getTime();
+    delta = n - last_time;
+
     if (!silent && (delta < 1000/60 || game.paused)) {
       // skip
     } else {
@@ -515,11 +524,13 @@ function init() {
       if (!silent) {
         game.render();
       }
+      prevrate = 0.99 * prevrate + 0.01 * delta;
+      framerate.innerHTML = "framerate: "+prevrate;
     }
     // animate(animator);
     var timeout = 1000/60;
     if (silent) {
-      timeout = 0.0001;
+      timeout = 0.00001;
     }
     window.setTimeout(animator, timeout)
   };
