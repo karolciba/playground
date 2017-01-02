@@ -5,39 +5,73 @@ STATES = Enum('Coin', 'fair biased')
 EMISSIONS = Enum('Toss', 'H T')
 
 from collections import namedtuple
-Parameters = namedtuple('Parameters','transitions emissions')
+Parameters = namedtuple('Parameters','transitions emissions initial')
 
 transitions = { STATES.fair: { STATES.fair: 0.9, STATES.biased: 0.1 },
                 STATES.biased: { STATES.fair: 0.5, STATES.biased: 0.5 } }
+initial = { STATES.fair: 0.83, STATES.biased: 0.17 }
 emissions = { STATES.fair: { EMISSIONS.H: 0.5, EMISSIONS.T: 0.5 },
                 STATES.biased: { EMISSIONS.H: 0.75, EMISSIONS.T: 0.25 } }
 
-crooked_casino = Parameters(transitions, emissions)
+crooked_casino = Parameters(transitions, emissions, initial)
 
 def strtotoss(string):
-    toss = []
-    l = list(EMISSIONS)
-    for c in string:
-        toss += [ x for x in l if x.name == c ]
-    return toss
+    l = { 'H': EMISSIONS.H, 'T': EMISSIONS.T }
+    return map(lambda x: l[x], string)
+
+def strtocoins(string):
+    l = { 'F': STATES.fair, 'B': STATES.biased }
+    return map(lambda x: l[x], string)
 
 def casino(parameters = crooked_casino):
+    """Crooked casino generator, generates emissions (Head, Tail) acording to
+    provided HMM model of Fair and Biased coin"""
     import random
 
     from collections import namedtuple
     record = namedtuple('Record', 'emission state')
 
-    # TODO: exercise reimplemnt
+    # TODO: reimplement as exercise
     from numpy.random import choice
-
-    state = random.choice(list(STATES))
 
     transitions = parameters.transitions
     emissions = parameters.emissions
+    initial = parameters.initial
+
+    state = choice(list(STATES), p=initial.values())
 
     while True:
         yield record(choice(emissions[state].keys(), p=emissions[state].values()), state)
         state = choice(transitions[state].keys(), p=transitions[state].values())
+
+def mul(elements):
+    m = 1
+    for el in elements:
+        m *= el
+    return m
+
+def prob_observation_state(x, pi, parameters = crooked_casino):
+    transitions = parameters.transitions
+    emissions = parameters.emissions
+    initial = parameters.initial
+
+    from itertools import tee, izip
+
+    # pairs PIi and PIi+1
+    state_i, state_i_next = tee(pi)
+    state_i_next.next()
+    trans = izip(state_i, state_i_next)
+    # select transitions probabilities
+    trans_coef = [ transitions[i][j] for i,j in trans ]
+    # states path probability, initial prob * transitions
+    state_prob = initial[pi[0]] * mul(trans_coef)
+
+    # import pdb; pdb.set_trace()
+    emiss_list = [ emissions[state][obs] for state,obs in zip(pi,x) ]
+    print emiss_list
+    emiss_prob = mul(emiss_list)
+
+    return state_prob * emiss_prob
 
 def decode(experiment, parameters = crooked_casino):
     transitions = parameters.transitions
