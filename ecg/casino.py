@@ -235,17 +235,52 @@ def train(no = 10, l = 10):
     print "Init", crooked_casino.initial
 
 
+def alpha(observations, model = crooked_casino):
+    transitions = model.transitions
+    emissions = model.emissions
+    initial = model.initial
+
+    f = [ { state: 1.0 for state in list(STATES) } for o in observations ]
+
+    f[0] = { state: (initial[state] * emissions[state][observations[0]]) for state in list(STATES) }
+
+    for i,o in enumerate(observations[1:],1):
+        for state in list(STATES):
+            s = sum(f[i-1][prev_state] * transitions[prev_state][state] for prev_state in list(STATES))
+            f[i][state] = s * emissions[state][o]
+
+    return f
+
+def beta(observations, model = crooked_casino):
+    transitions = model.transitions
+    emissions = model.emissions
+    initial = model.initial
+
+    b = [ { state: 1.0 for state in list(STATES) } for o in observations ]
+
+    # alredy initialized border case
+    # b[-1] = { state: 1.0 for state in list(STATES) }
+
+    for i,o in reversed(list(enumerate(observations[1:]))):
+        for state in list(STATES):
+            b[i][state] = sum( transitions[state][next_state]
+                              * emissions[next_state][o]
+                              * b[i+1][next_state] for next_state in list(STATES) )
+
+    return b
+
 def baum_welch(observations, model = casino_model):
     transitions = model.transitions
     emissions = model.emissions
     initial = model.initial
 
-    f = forward(observations, model)
-    b = backward(observations, model)
+    # f = forward(observations, model)
+    # b = backward(observations, model)
+    f = alpha(observations, model)
+    b = beta(observations, model)
 
     # print "forward", f
     # print "backward", b
-
 
     ksi = [ { fro: { to: 1.0 for to in list(STATES) } for fro in list(STATES) } for x in observations[:-1] ]
     for i,o in enumerate(observations[1:] ,0):
@@ -423,8 +458,8 @@ def estimation(gen = casino(), samples=1000):
 
     return Parameters(normalized_transitions, normalized_emissions)
 
-if __name__ == '__main__':
-    for i in range(100):
-        print "Batch no", i
-        train(100,300)
-        print ""
+# if __name__ == '__main__':
+#     for i in range(100):
+#         print "Batch no", i
+#         train(100,300)
+#         print ""
