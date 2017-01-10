@@ -19,11 +19,16 @@ Available in browser [Pong AI](https://rawcdn.githack.com/karolciba/playground/m
 
 Further notes in subdirectory [mdp](mdk/README.md)
 
-## eucliderer
-Graphics renderer capable of drawing geometry primitives: dots, lines, boxes, curves.
-First implementation is to be 2D.
+## Hidden Markov Model for Electrocardiogram
+Attempts to model heart rythm with HMM for inference on pulse state.
 
-Visualization tool needed for other projects.
+Currently exercises with HMM algorithm in Crooked Casino from [Bioinformatics Algorithms](https://www.youtube.com/channel/UCKSUVRs2N2FdDNvQoRWKhoQ) course.
+
+## neural networks
+AI learning to play Google TRex. Attempts to learn to play using 2 layer backpropagated network.
+In a kind of a reinfored learning (simplified [Pong from Pixels](http://karpathy.github.io/2016/05/31/rl/))
+
+Further notes in subdirectory [neural](neural/README.md)
 
 ## kohonen
 Exercises with Kohonen Self Organizing Maps. Mapping colour space to 2D graph,
@@ -37,6 +42,12 @@ CLICK TO PLAY
 To be done:
 - space learning "robotic arm"
 - balancing robot
+
+## eucliderer
+Graphics renderer capable of drawing geometry primitives: dots, lines, boxes, curves.
+First implementation is to be 2D.
+
+Visualization tool needed for other projects.
 
 ## mendelputer
 Bayesian Network computer for finding genetic traits in ancestry tree (e.g. child blood type).
