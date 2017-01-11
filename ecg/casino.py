@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+""" Exercices on HMM, inference and learning
+
+    References:
+    [1] http://bozeman.genome.washington.edu/compbio/mbt599_2006/rabiner.pdf
+    [2] http://bozeman.genome.washington.edu/compbio/mbt599_2006/hmm_scaling_revised.pdf
+    [3] http://alumni.media.mit.edu/~rahimi/rabiner/rabiner-errata/
+    [4] http://crsouza.com/2010/03/23/hidden-markov-models-in-c/
+    [5] http://crsouza.com/2010/03/24/hidden-markov-model-based-sequence-classifiers-in-c/
+    [6] https://www.youtube.com/watch?v=7KGdE2AK_MQ&list=PLD0F06AA0D2E8FFBA&index=95
+    [7] https://www.youtube.com/playlist?list=PLQ-85lQlPqFPnk31Uut2ajVkBvlFmMtdx
+"""
 
 from enum import Enum
 
