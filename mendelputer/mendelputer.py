@@ -1,72 +1,115 @@
-class Specimen:
+"""
+Phenotype: 0, A, B, AB
+Genotype: 00, 0A, A0, AA, 0B, B0, BB, AB
 
-    _alleles = ( 'AA', 'AB', 'BA', 'A0', 'BB', 'B0', '00', '0A', '0B' )
 
-    _phenotypes = ( 'A', 'B', 'AB', '0' )
+P(P):
+ 0      .37
+ A      .38
+ B      .17
+ AB     .08
 
-    _phenotype_probability = { 'A' : 0.43,
-                   'B' : 0.11,
-                   'AB': 0.04,
-                   '0' : 0.42 }
+P(P|G)
+ 0 | 00     1
+ A | 0A     1
+ A | A0     1
+ A | AA     1
+ B | 0B     1
+ B | B0     1
+ B | BB     1
+ AB | AB    1
 
-    _allele_given_phenotype = {
-            'AB' : { 'AA': 0, 'A0': 0, '0A': 0,
-                    'BB': 0, 'B0': 0, '0B': 0,
-                    'AB': .5, 'BA': .5,
-                    '00': 0 },
-            'A' : { 'AA': 1./3, 'A0': 1./3, '0A': 1./3,
-                    'BB': 0, 'B0': 0, '0B': 0,
-                    'AB': 0, 'BA': 0,
-                    '00': 0 },
-            'B' : { 'AA': 0, 'A0': 0, '0A': 0,
-                    'BB': 1./3, 'B0': 1./3, '0B': 1./3,
-                    'AB': 0, 'BA': 0,
-                    '00': 0 },
-            '0' : { 'AA': 0, 'A0': 0, '0A': 0,
-                    'BB': 0, 'B0': 0, '0B': 0,
-                    'AB': 0, 'BA': 0,
-                    '00': 1 }
-            }
+ otherwise  0
 
-    def __init__(self, name):
-        self._name = name
-        self._alleles = Specimen._alleles
-        self._phenotypes = Specimen._phenotypes
-        self._phenotype_probability = Specimen._phenotype_probability
-        self._allele_probability = { key: 0 for key in self._alleles }
-        self._parents = []
-        self._children = []
-        self._calculate_allele_probability()
+P(P,G) = P(P|G)*P(G)
+P(P,G) = P(G|P)*P(P)
+P(G|P) = P(P|G)*P(G)/P(P)
 
-    def set_phenotype(self, phenotype):
-        for key in self._phenotype_probability.keys():
-            if key == phenotype:
-                self._phenotype_probability[key] = 1
-            else:
-                self._phenotype_probability[key] = 0
+P(P|Pp): sum( P|PmPd, Pd)
 
-    def add_parent(self, parent):
-        self._parents.append(parent)
-        parent._children.append(self)
+                       Grand Mom Pheno     Uknown Parent Pheno
+                        |   |                     |
+               +--------+   |  +------------------+
+               v            |  |
+         Grand Mom Blood    |  |
+                            v  v
+   Mom Pheno              Dad Pheno                  Step Mom Pheno
+     |  |                   |  |  |                     |     |
+     |  |                   |  |  +-------------+       |     |
+     |  |                   |  |                |       |     +-------+
+   +-+  +------+  +------+--+  +-+              +---+   |             v
+   v           |  |      |       v                  |   |      Step Mom Blood
+Mom Blood      |  |      |    Dad Blood             v   v
+               |  |      |                    Step Sister Pheno
+               v  v      +-----------+                |
+            Child Pheno              v                v
+                 |            Sibiling Pheno   Step Sister Blood
+                 v                   |
+            Child Blood              v
+                              Sibiling Blood
+
+"""
+
+"""
+Possible Node instances:
+ blood : value
+ 0     : .37
+ A     : .38
+ B     : .17
+ AB    : .08
+
+ child_blood, parent_blood : value
+ A            A            : .3
+ 0            A            : .2
+ 0            AB           : 0
+
+ child_blood, parent_blood | grand_blood : value
+ A            A            | A           : .3
+ 0            A            | 0           : .2
+ 0            AB           | 0           : 0
+"""
+
+class Node():
+
+    def __init__(self, name, columns, conditions = [], table = []):
+        """ variables names list
+        conditions list which of the variables are conditions, empty for joint
+        """
+        from collections import namedtuple
+        # tuple ("a","b","c", 0.314)
+        self.factors = dict()
+
+        self.conditions = list(conditions)
+        self.columns = list(columns)
+
+        self.name = name
+        self.parents = {}
+        self.children = {}
+
+    def add_row(self, variables, value):
+        key = tuple(variables)
+        self.factors[key] = value
+
+    def set_parent(self, parent):
+        self.parents.add(parent)
+        parent.children.add(self)
 
     def add_child(self, child):
-        self._children.append(child)
-        child._parents.append(self)
+        child.add_parent(self)
 
-    def _calculate_allele_probability(self):
-        self._allele_probability = { key: 0 for key in self._alleles }
-        for phenotype, phenotype_probability in self._phenotype_probability.items():
-            print phenotype, phenotype_probability
-            bayes = self._allele_given_phenotype[phenotype]
-            print bayes
-            for allele, probability in bayes.items():
-                print "allele %s = probability %s * phenotype_p %s" % (allele, probability, phenotype_probability)
-                self._allele_probability[allele] += probability * phenotype_probability
-        print
-        print self._allele_probability
-        return self._allele_probability
+    def marginalize(self, name):
+        if name in self.columns and name not in self.conditions:
+            factors = {}
+            column = next(pos for pos,val in enumerate(self.columns) if val == name)
+            column_space = set( v for v in self.factor.keys()[column] )
+            new_columns = list(self.columns).remove(name)
 
 
-class Matrix:
-    def __init__(self):
-        pass
+        """ Sum over variable name reducing size table """
+
+    def join(self, parent):
+        """ Joins with parent, remove parent and takes its precedessors """
+
+
+def test():
+    pass
