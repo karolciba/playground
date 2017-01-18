@@ -245,6 +245,30 @@ def train(no = 10, l = 10):
     print "Emis", crooked_casino.emissions
     print "Init", crooked_casino.initial
 
+def batch_train(batch_size = 10, obs_length = 10):
+    print "Before"
+    print "Trans", casino_model.transitions
+    print "Emis", casino_model.emissions
+    print "Init", casino_model.initial
+    import sys
+    observations_list = []
+    for t in xrange(batch_size):
+        g = casino()
+        obs = [ g.next().emission for x in xrange(obs_length) ]
+        observations_list.append(obs)
+
+    m = batch_baum_welch(observations_list)
+
+    print ""
+    print "After"
+    print "Trans", m.transitions
+    print "Emis", m.emissions
+    print "Init", m.initial
+    print ""
+    print "Orig"
+    print "Trans", crooked_casino.transitions
+    print "Emis", crooked_casino.emissions
+    print "Init", crooked_casino.initial
 
 def alpha(observations, model = crooked_casino):
     transitions = model.transitions
@@ -343,6 +367,88 @@ def baum_welch(observations, model = casino_model):
                 if observations[i] == em:
                     nom += gamma[i][state]
             emissions[state][em] = nom/sum( row[state] for row in gamma)
+            if emissions[state][em] == 0:
+                emissions[state][em] = 0.01
+
+    return model
+
+def batch_baum_welch(observations_list, model = casino_model):
+    transitions = model.transitions
+    emissions = model.emissions
+    initial = model.initial
+
+    def gamma_ksi(observations):
+        f = alpha(observations, model)
+        b = beta(observations, model)
+
+        ksi = [ { fro: { to: 1.0 for to in list(STATES) } for fro in list(STATES) } for x in observations[:-1] ]
+        for i,o in enumerate(observations[1:] ,0):
+            s = 0.0
+            for fro in list(STATES):
+                for to in list(STATES):
+                    ksi[i][fro][to] = f[i][fro]*transitions[fro][to]*b[i+1][to]*emissions[to][o]
+                    # if ksi[i][fro][to] == 0:
+                    #     print "!!baum welch!! epsilon"
+                    #     ksi[i][fro][to] = 0.01
+                    #     # import pdb; pdb.set_trace()
+                    s += ksi[i][fro][to]
+            # normalize
+            # if s != 0:
+            if True:
+                for fro in list(STATES):
+                    for to in list(STATES):
+                        ksi[i][fro][to] /= s
+
+        # gamma = forward_backward(observations, model)
+        # print "old gamma", len(gamma), gamma
+
+        gamma = [ { state: 1.0 for state in list(STATES) } for x in observations[:-1] ]
+        for i,row in enumerate(gamma):
+            for state in list(STATES):
+                s = sum(ksi[i][state][to] for to in list(STATES))
+                row[state] = s
+        return gamma, ksi
+
+    gamma_ksi_list = [ gamma_ksi(observations) for observations in observations_list ]
+
+    gammas = [ x[0] for x in gamma_ksi_list ]
+    ksis = [ x[1] for x in gamma_ksi_list ]
+
+
+    # sum state probability for all steps in gamma for all gammas
+    # for gamma in gammas:
+    #     for row in gamma:
+    #         for state in list(STATES):
+    #             initial[state] += row[state]
+
+    for state in list(STATES):
+        initial[state] = 0.0
+
+    for gamma in gammas:
+        for state in list(STATES):
+            initial[state] += gamma[0][state]
+    # normalize
+    s = sum(v for v in initial.values())
+    for state in initial:
+        initial[state] /= s
+
+    from itertools import chain
+    for fro in list(STATES):
+        for to in list(STATES):
+            noms = [ [ row[fro][to] for row in ksi[:-1] ] for ksi in ksis ]
+            denoms = [ [ row[fro] for row in gamma[:-1] ] for gamma in gammas ]
+            transitions[fro][to] = sum( chain(*noms) ) / sum( chain(*denoms) )
+            if transitions[fro][to] == 0:
+                transitions[fro][to] = 0.01
+
+    for state in list(STATES):
+        for em in list(EMISSIONS):
+            nom = 0.0
+            for observations in observations_list:
+                for i in xrange(len(observations[:-1])):
+                    if observations[i] == em:
+                        nom += gamma[i][state]
+            emissions[state][em] = nom/sum( row[state] for row in gamma for gamma in gammas)
             if emissions[state][em] == 0:
                 emissions[state][em] = 0.01
 
