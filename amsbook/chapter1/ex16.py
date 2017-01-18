@@ -29,6 +29,19 @@ def pairgen():
         yield g
     raise StopIteration
 
+def orderedpairgen():
+    genders = ['B', 'G']
+    boy = False
+    girl = False
+    while not boy or not girl:
+        g = random.choice(genders)
+        if g == 'B':
+            boy = True
+        if boy == True and g == 'G':
+            girl = True
+        yield g
+    raise StopIteration
+
 def anypairgen():
     genders = ['B', 'G']
     boys = 0
