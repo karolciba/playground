@@ -1,15 +1,37 @@
-from __future__ import print_function
-
+from collections import Counter
 import words
 
-import sys
+def pairwise(iter):
+    """Pariwise generator from iterator, yields element (1st, 2nd), (2nd, 3rd), ... (n-1st, nst)"""
+    from itertools import tee, izip
+    it, it_next = tee(iter)
+    next(it_next)
+    for first, second in izip(it, it_next):
+        yield first, second
 
-w = words.Words('brown.pickle')
+class Model():
+    def __init__(self):
+        # keep number of observed transitions ("from_word", "to_word") =  #transitions
+        self._transitions = Counter()
 
-words_length = len(w)
+        self._words = words.Words()
 
-# markov = np.ones( (words_length, words_length), dtype = np.uint32 )
-# markov = [ [ 1 for x in xrange(words_length)] for y in xrange(words_length) ]
+    def train(self):
+        import nltk
+
+        self._words = words.Words.brown_corpus()
+
+        observed_transitions = Counter()
+
+        for sentence in nltk.corpus.brown.sents():
+            # traverse pairs: word->next_word
+            sentence.insert(0,words.Tokens.start.value)
+            sentence.append(words.Tokens.end.value)
+
+            for word, next_word in pairwise(sentence):
+                index = (word.lower(), next_word.lower())
+                observed_transitions[index] += 1
+
 
 def train():
     from collections import Counter
@@ -25,7 +47,7 @@ def train():
 
     for sentence in nltk.corpus.brown.sents():
         line = "\rDictionary buildind Processing sentence %d of %d" % (counter,sententes_count)
-        print (line, end='')
+        # print (line, end='')
         counter+=1
         sys.stdout.flush()
         for word in sentence:
@@ -44,7 +66,7 @@ def train():
 
         # print ("\rProcessing sentence {} of {} text: {}".format(counter,sententes_count, sentence)) ,
         line = "\rProcessing sentence %d of %d" % (counter,sententes_count)
-        print (line, end='')
+        # print (line, end='')
         counter+=1
         sys.stdout.flush()
 
@@ -105,7 +127,7 @@ def max_sentence(model):
     next_word = find_rand_next(start, model)
     guard = 0
     while next_word != "__end__":
-        print("\r" + string.join(sentence), end='')
+        # print("\r" + string.join(sentence), end='')
         sys.stdout.flush()
 
         sentence.append(next_word)
