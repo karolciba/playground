@@ -132,6 +132,9 @@ class DDALinesRenderer(Renderer):
                 x0 += xinc
                 y0 += yinc
 
+        for line in begin:
+            pass
+
     def _draw_buffer_line(self, buffer, begin, end):
         pass
 
@@ -162,7 +165,9 @@ class Planar():
 
 if __name__=="__main__":
     import numpy as np
+    import matplotlib
     import matplotlib.pyplot as plt
+    matplotlib.rcParams['image.interpolation'] = 'nearest'
 
     b = np.zeros( (1000, 1000, 3) )
 
