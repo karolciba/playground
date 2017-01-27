@@ -19,11 +19,11 @@ EMISSIONS = Enum('Toss', 'H T')
 from collections import namedtuple
 Parameters = namedtuple('Parameters','transitions emissions initial')
 
-transitions = { STATES.fair: { STATES.fair: 0.3, STATES.biased: 0.7 },
-                STATES.biased: { STATES.fair: 0.5, STATES.biased: 0.5 } }
+transitions = { STATES.fair: { STATES.fair: 0.8, STATES.biased: 0.2 },
+                STATES.biased: { STATES.fair: 0.2, STATES.biased: 0.8 } }
 # initial = { STATES.fair: 0.83, STATES.biased: 0.17 }
 initial = { STATES.fair: 0.5, STATES.biased: 0.5 }
-emissions = { STATES.fair: { EMISSIONS.H: 0.4, EMISSIONS.T: 0.6 },
+emissions = { STATES.fair: { EMISSIONS.H: 0.5, EMISSIONS.T: 0.5 },
                 STATES.biased: { EMISSIONS.H: 0.8, EMISSIONS.T: 0.2 } }
 
 crooked_casino = Parameters(transitions, emissions, initial)
@@ -275,9 +275,14 @@ def alpha(observations, model = crooked_casino):
     emissions = model.emissions
     initial = model.initial
 
-    f = [ { state: 1.0 for state in list(STATES) } for o in observations ]
+    f = [ { state: 0.5 for state in list(STATES) } for o in observations ]
 
     f[0] = { state: (initial[state] * emissions[state][observations[0]]) for state in list(STATES) }
+
+    row_sum = sum(f[0][state] for state in list(STATES))
+    for state in list(STATES):
+        f[0][state] /= float(row_sum)
+
 
     for i,o in enumerate(observations[1:],1):
         for state in list(STATES):
@@ -295,7 +300,7 @@ def beta(observations, model = crooked_casino):
     emissions = model.emissions
     initial = model.initial
 
-    b = [ { state: 1.0 for state in list(STATES) } for o in observations ]
+    b = [ { state: 1.0/len(STATES) for state in list(STATES) } for o in observations ]
 
     # alredy initialized border case
     # b[-1] = { state: 1.0 for state in list(STATES) }
