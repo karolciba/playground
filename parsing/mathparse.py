@@ -5,107 +5,254 @@ rest -> +TermRest | -TermRest | e
 term -> 0-9
 """
 
-class MathParser(object):
-    def __init__(self, string, logger = False):
-        self._string = string + '$'
-        self._tree = []
-        self._lookahead = None
-        self._pos = 0
-        self._end = '$'
-        self._logger = logger
+logger = True
+indent = 0
+def _logging(func):
+    def logging(self, *args, **kwargs):
+        global indent
+        if logger and func.__name__ != "__init__":
+            print " "*indent, "Entering", self.__class__, func, args, kwargs
+            indent += 1
+        ret = func(self, *args, **kwargs)
+        if logger and func.__name__ != "__init__":
+            indent -= 1
+            print " "*indent, "Leaving", self.__class__, func, ret
+        return ret
+    return logging
 
-    def _logging(func):
-        def logging(self, *args, **kwargs):
-            if self._logger:
-                print "Entering", func, args, kwargs
-            ret = func(self, *args, **kwargs)
-            if self._logger:
-                print "Leaving", func, ret
-            return ret
-        return logging
+class SyntaxToken(object):
+    @_logging
+    def consume(self, *args):
+        return False
+    @_logging
+    def syntax(self):
+        return ()
 
-    def parse(self):
-        """ Parses string given during initialization """
-        # import pdb; pdb.set_trace()
-        self._lookahead = self._string[0]
-        self._expr()
-        return self._tree
+    def parse(self, string]):
+        # create object
+        node = syntax[0]()
+        # try to consume input
+        for idx, char in enumerate(string):
+            print "Consuming input", idx, char
+            if not node.consume(char):
+                break
+
+        substring = string[idx:]
+        # get possible grammars
+        grammars = node.syntax()
+        print "Checking grammars", grammars, "substr", substring
+        # descent into each grammar
+        for grammar in grammars:
+            leaf = self.parse(substring, grammar)
+            if leaf:
+                node._children = leaf
+                break
+
+        return node
+
+class NumberToken(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._lexeme = []
+        self._started = False
+        self._begin = '+-'
 
     @_logging
-    def _getchar(self):
-        self._pos += 1
-        return self._string[self._pos]
-
-    @_logging
-    def _match(self, token):
-        if self._lookahead == token:
-            self._lookahead = self._getchar()
-        """ Consumes element from string """
-
-    @_logging
-    def _push(self, token):
-        self._tree.append(token)
-        """ Pushes element onto tree """
-
-    @_logging
-    def _expr(self):
-        """ expr -> term rest """
-        self._term()
-        self._rest()
-
-    @_logging
-    def _rest(self):
-        """ rest -> + term rest | - term rest | e """
-        if self._lookahead == '+':
-            self._match('+')
-            self._term()
-            self._push('+')
-            self._rest()
-        elif self._lookahead == '-':
-            self._match('-')
-            self._term()
-            self._push('-')
-            self._rest()
-        else:
-            pass
-
-    @_logging
-    def _term(self):
-        """ term -> [0-9] """
-        if self._lookahead.isdigit():
-            self._push(int(self._lookahead))
-            self._match(self._lookahead)
-        else:
-            self._error()
-
-    def _error(self):
-        """ Error in parsing """
-        raise Exception('Parsing error')
-
-class MathEvaluate(object):
-    @staticmethod
-    def eval(expr):
-        stack = []
-        for e in expr:
-            if e == '+':
-                ret = stack.pop() + stack.pop()
-                stack.append(ret)
-            elif e == '-':
-                ret = stack.pop() - stack.pop()
-                stack.append(ret)
+    def consume(self, char):
+        if not self._started:
+            self._started = True
+            if char in self._begin:
+                self._lexeme.append(char)
+            elif char.isdigit():
+                self._lexeme.append(char)
             else:
-                stack.append(e)
-        return stack
+                return False
+        elif char.isdigit():
+            self._lexeme.append(char)
+        else:
+            return False
+
+        return True
+
+    @_logging
+    def value(self):
+        return int("".join(self._lexeme))
+
+class WhiteSpaceToken(SyntaxToken):
+    @_logging
+    def __init__(self):
+        import string
+        self._lexeme = []
+        self._started = False
+        self._valid = string.whitespace
+
+    @_logging
+    def consume(self, char):
+        if char in self._valid:
+            self._lexeme.append(char)
+        else:
+            return False
+
+    @_logging
+    def value(self):
+        return "".join(self._lexeme)
+
+    @_logging
+    def syntax(self):
+        return ()
+
+class PlusToken(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._lexeme = '+'
+        self._children = []
+
+    @_logging
+    def consume(self, char):
+        if char == '+':
+            return True
+        else:
+            return False
+
+    @_logging
+    def value(self):
+        return self._children[0].value() + self._children[1].value()
+
+class MinusToken(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._lexeme = '-'
+        self._children = []
+
+    @_logging
+    def consume(self, char):
+        if char == '-':
+            pass
+        else:
+            return False
+
+    @_logging
+    def value(self):
+        return self._children[0].value() - self._children[1].value()
+
+class ErrorSyntax(SyntaxToken):
+    @_logging
+    def __init__(self):
+        pass
+
+    @_logging
+    def consume(self, char):
+        raise Exception("Syntax error!")
+
+class EndToken(SyntaxToken):
+    @_logging
+    def __init__(self):
+        pass
+
+    @_logging
+    def consume(self, char):
+        if char == '$':
+            return True
+
+        return False
+
+class TermSyntax(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._syntax = (NumberToken,
+                        ErrorSyntax)
+        self._children = []
+
+class RestSyntax(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._syntax = (PlusToken,
+                        MinuxToken,
+                        EndToken,
+                        ErrorSyntax)
+        self._children = []
+
+class ExprSyntax(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._syntax = (TermSyntax,
+                        ErrorSyntax)
+        self._children = []
+
+    def consume(self, char):
+        return True
+
+    @_logging
+    def syntax(self):
+        return self._syntax
+
+    def parse(self, string):
+        for idx, char in enumerate(string):
+            ret = self.consume(char)
+            if ret == False:
+                break
+
+        substring = string[idx:]
+
+        grammar = None
+        for option in self.syntax():
+            grammar = option()
+            grammar.parse(substring)
+
+        return grammar
 
 
+class TempSyntax(SyntaxToken):
+    @_logging
+    def __init__(self):
+        self._syntax = ((NumberToken, WhiteSpaceToken, NumberToken),
+                        (WhiteSpaceToken, NumberToken),
+                        (ErrorSyntax))
+        self._children = []
+
+    def consume(self, char):
+        return False
+
+    def syntax(self):
+        return self._syntax
+
+
+class Parser(object):
+    def __init__(self, logger = True):
+        self._logger = logger
+        pass
+
+    @_logging
+    def parse(self, string, syntax = [TempSyntax]):
+        # create object
+        node = syntax[0]()
+        # try to consume input
+        for idx, char in enumerate(string):
+            print "Consuming input", idx, char
+            if not node.consume(char):
+                break
+
+        substring = string[idx:]
+        # get possible grammars
+        grammars = node.syntax()
+        print "Checking grammars", grammars, "substr", substring
+        # descent into each grammar
+        for grammar in grammars:
+            leaf = self.parse(substring, grammar)
+            if leaf:
+                node._children = leaf
+                break
+
+        return node
 
 if __name__ == '__main__':
 
-    string = '2+3-5+8'
+    string = '2+3-5+8-11+256+123-67'
 
     # import pudb; pu.db
 
-    parser = MathParser(string)
-    tree = parser.parse()
+    parser = Parser()
+    tree = parser.parse(string)
 
-    print parser._tree
+    print "Tree"
+    print tree
