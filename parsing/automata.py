@@ -13,39 +13,85 @@ from collections import defaultdict
 epsilon = ""
 
 class Automata(object):
-    def __init__(self, states, sigma, delta, s0, accepting, error_state):
+    """Nondeterministic Finite Automata"""
+    def __init__(self, states, delta, accepting):
         """
-        states - set of states available
-        sigma - alfabet
+        states - count of states (including start state, excluding error state)
         delta - function mapping state_i, input -> next state
             must follow collections interface, i.e. delta[(state_i,'c')] -> error_state
-        s0 - initial state
         accepting - set of accepting states
-        """
-        self.states = states or set()
-        self.sigma = sigma or set()
-        self.delta = delta or set()
-        self.s0 = s0
-        self.accepting = accepting or set()
-        self.error_state = error_state
 
-        self.fringe = [ s0 ]
+        error_state = implicit -1
+        s0 - initial state, implicit 0
+        sigma - implicit alphabet of all chars
+        """
+        self.states = states
+
+        # self.delta = defaultdict(lambda: set([-1]))
+        new_delta = dict()
+        # tranlate new_stastes to set's
+        for key,value in delta.iteritems():
+            listed_value = list()
+            try:
+                listed_value.extend(value)
+            except:
+                listed_value.append(value)
+            new_delta[key] = frozenset(listed_value)
+
+        # compress input - if many edges from state to state condense them in
+        # one with a list, default list with one item.
+        # NOTE: poor complexity o(len(delta)**2)
+        # self.delta = new_delta
+        # new_delta = dict()
+        # transitions = set((k[0],v) for k,v in self.delta.iteritems())
+        # for fro,to in transitions:
+        #     inputs = frozenset(k[1] for k,v in self.delta.iteritems() if k[0] == fro and v == to)
+        #     new_delta[fro,inputs] = to
+
+        self.delta = new_delta
+
+        self.s0 = 0
+        self.accepting = set()
+        try:
+            self.accepting.update(accepting)
+        except:
+            self.accepting.add(accepting)
+
+        self.error_state = -1
+
+        self.fringe = set([ self.s0 ])
+        adt = self.delta.get((self.s0,""),None)
+        if adt:
+            self.fringe.update(adt)
+        self._unroll_fringe()
+
+    def _unroll_fringe(self):
+        while True:
+            new_fringe = set()
+            for state in self.fringe:
+                new_fringe.add(state)
+                adt = self.delta.get((state,""),None)
+                if adt:
+                    new_fringe.update(adt)
+            if new_fringe == self.fringe:
+                break
+            self.fringe = new_fringe
 
     def transit(self, input):
-        # if input not in self.sigma:
-        #     raise Exception("Input not in alphabet")
-        next_fringe = []
+        next_fringe = set()
         for state in self.fringe:
-            next_state = self.delta[state,input]
+            next_state = self.delta.get((state,input),set([-1]))
             if next_state:
-                next_fringe.append(next_state)
+                next_fringe.update(next_state)
             else:
-                raise Exception("Unknown transition")
-                next_fringe.append(self.error_state)
-            if (next_state,"") in self.delta:
-                next_fringe.extend(self.delta[next_state,""])
+                next_fringe.add(-1)
+            # epsilon transitions
+            for n in next_state:
+                if (n,"") in self.delta:
+                    next_fringe.update(self.delta[n,""])
 
-        self.fringe = set(next_fringe)
+        self.fringe = next_fringe
+        self._unroll_fringe()
 
     def match(self, string):
         self.reset()
@@ -54,70 +100,77 @@ class Automata(object):
         return self.accepted()
 
     def reset(self):
-        self.fringe = [ self.s0 ]
+        self.fringe = set([ self.s0 ])
+        if (self.s0,"") in self.delta:
+            self.fringe.update(self.delta[self.s0,""])
 
     def accepted(self):
         return any(st for st in self.fringe if st in self.accepting)
 
     def concat(self, other):
-        new_start = self.s0
-        new_delta = defaultdict(lambda: self.error_state)
-        print 'copying left'
+        new_states = self.states + other.states
+        new_delta = defaultdict(lambda: set([-1]))
+        max_state = 0
+        # renumbering old states shifting them +1
         for key,value in self.delta.iteritems():
-            print key,value
-            new_delta[key] = value
+            # (state, input) => new_state
+            new_key = key[0], key[1]
+            max_state = max(max_state, max(value))
+            new_delta[new_key] = set(value)
 
-        second_start = max(self.states) + 1
-        print "epsilon transition from accepitn"
+        # transitions from old accepting to other start
+        other_start = max_state + 1
         for acc in self.accepting:
-            print (acc,""), second_start
-            new_delta[acc,""] = [second_start]
+            new_delta[acc,""] = other_start
 
-        print "appending right"
+        # renumbering other states shiting them whast already is
         for key,value in other.delta.iteritems():
-            new_key = key[0]+second_start,key[1]
-            new_value = value + second_start
-            print "old:",key,value, "new:", new_key, new_value
-            new_delta[new_key] = new_value
+            new_key = key[0] + other_start, key[1]
+            new_delta[new_key] = set(v + other_start for v in value)
 
-        new_accepting = [ oth_acc+second_start for oth_acc in  other.accepting]
-        new_sigma = self.sigma + other.sigma
+        new_accepting = [ o_acc + other_start for o_acc in other.accepting ]
 
-        print new_delta
-        new_states = set(key[0] for key in new_delta)
-        return Automata(new_states, new_sigma, new_delta, new_start, new_accepting, self.error_state)
+        return Automata(new_states, new_delta, new_accepting)
+
 
     def alternate(self, other):
-        new_start = 0
-        new_delta = defaultdict(lambda: self.error_state)
+        new_states = self.states + other.states
+        new_delta = defaultdict(lambda: set([-1]))
+
+        max_state = 1
+        # renumbering old states shifting them +1
         for key,value in self.delta.iteritems():
-            new_key = key[0]+1,key[1]
-            new_value = value + 1
-            new_delta[new_key] = new_value
+            # (state, input) => new_state
+            new_key = key[0]+1, key[1]
+            max_state = max(max_state, max(value) + 1)
+            new_delta[new_key] = set(v + 1 for v in value)
 
-        second_start = max(self.states) + 1
-        new_delta[0,""] = [ self.s0 + 1, other.s0 + 2]
+        other_start = max_state + 1
+        # renumbering other states shiting them whast already is
         for key,value in other.delta.iteritems():
-            new_key = key[0]+second_start,key[1]
-            new_value = value + second_start
-            print "old:",key,value, "new:", new_key, new_value
-            new_delta[new_key] = new_value
+            new_key = key[0] + other_start, key[1]
+            new_delta[new_key] = set(v + other_start for v in value)
 
-        new_sigma = self.sigma + other.sigma
+        # epsilon transitions to both start_states
+        new_delta[0,""] = [ 1, other_start ]
 
-        print new_delta
-        new_states = set(key[0] for key in new_delta)
-        new_accepting = len(new_states) + 1
+        new_accepting = [ s_acc + 1 for s_acc in self.accepting ]
+        new_accepting += [ o_acc + other_start for o_acc in other.accepting ]
 
-        acc_eps = [s_acc + 1 for s_acc in self.accepting]
-        acc_eps += [o_acc + second_start for o_acc in other.accepting ]
+        return Automata(new_states, new_delta, new_accepting)
 
-        for s in acc_eps:
-            delta[s,""] = [new_accepting]
-        return Automata(new_states, new_sigma, new_delta, new_start, new_accepting, self.error_state)
+    def __and__(self, other):
+        return self.concat(other)
+
+    def __or__(self, other):
+        return self.alternate(other)
 
     def __str__(self):
         return super(Automata,self).__str__() + " In state {}, accepting {}"\
+            .format(self.fringe, [st for st in self.fringe if st in self.accepting])
+
+    def __repr__(self):
+        return super(Automata,self).__repr__() + " In state {}, accepting {}"\
             .format(self.fringe, [st for st in self.fringe if st in self.accepting])
 
 
@@ -131,7 +184,7 @@ for x in range(1,10):
     delta[2,str(x)] = 2
 delta[2,'0'] = 2
 
-INTEGER = Automata(set([-1,0,1,2]),string.digits, delta, 0, [1,2], -1)
+INTEGER = Automata(3, delta, [1,2])
 
 # FLOAT
 # Float (0|[1-9][0-9]*)+.[0-9]*
@@ -155,69 +208,42 @@ for x in range(0,10):
     delta[5,str(x)] = 5
 
 
-FLOAT = Automata(set([-1,0,1,2]),string.digits+".", delta, 0, [3, 5], -1)
+FLOAT = Automata(3, delta, [3, 5])
 
-PLUS = Automata(set([-1,0,1]),"+",defaultdict(lambda: -1, [ ((0,"+"),1)]), 0, [1], -1)
-MINUS = Automata(set([-1,0,1]),"-",defaultdict(lambda: -1, [ ((0,"-"),1)]), 0, [1], -1)
-MUL = Automata(set([-1,0,1]),"*",defaultdict(lambda: -1, [ ((0,"*"),1)]), 0, [1], -1)
-DIV = Automata(set([-1,0,1]),"/",defaultdict(lambda: -1, [ ((0,"/"),1)]), 0, [1], -1)
+PLUS = Automata(2,defaultdict(lambda: -1, [ ((0,"+"),1)]),[1])
+MINUS = Automata(2,defaultdict(lambda: -1, [ ((0,"-"),1)]),[1])
+MUL = Automata(2,defaultdict(lambda: -1, [ ((0,"*"),1)]),[1])
+DIV = Automata(2,defaultdict(lambda: -1, [ ((0,"/"),1)]),[1])
+
+SIGNED_INTEGER = MINUS & INTEGER
 
 if __name__ == "__main__":
-    from collections import defaultdict
 
     print "Test automata"
-    states = set(xrange(-1,5))
-    sigma = 'abcdef'
-
-    delta = defaultdict(lambda: -1)
-    delta[0, 'a'] = 1
-    delta[1, 'b'] = 2
-    delta[2, 'c'] = 3
-    accepting = set([3])
-
-    auto = Automata(states, sigma, delta, 0, accepting, -1)
-
-    print "Transition a-b-c"
-    auto.transit('a')
-    print auto
-    auto.transit('b')
-    print auto
-    auto.transit('c')
-    print auto
-
 
     print "INTEGER"
     integer = INTEGER
-    print "Transition 01"
-    for c in '01':
-        print "transition", c
-        integer.transit(c)
-        print integer
+    transitions = ['123123', '19', '0.434', '0.', '.0', '0', '.1', '123foobar.23']
+    for trans in transitions:
+        integer.reset()
+        # print "transition", trans
+        for c in trans:
+            # print "transition", c
+            integer.transit(c)
+            # print float
+        print "transition", trans, "accepted", integer.accepted()
 
-    integer.reset()
-    print "Transition 1012"
-    for c in '1012':
-        print "transition", c
-        integer.transit(c)
-        print integer
-
-
-    delta = defaultdict(lambda: -1)
-    delta[0,'n'] = 1
-    delta[1,'e'] = 2
-    delta[2,'w'] = 3
-    delta[1,'o'] = 4
-    delta[4,'t'] = 5
-
-    states = [x for x in range(6)]
-    newnot = Automata(states, set('newnot'), delta, 0, [3,5],-1)
-
-    newnot.reset()
-    print "Transition not"
-    for c in 'not':
-        print "transition", c
-        newnot.transit(c)
-        print newnot
+    print "SIGNED INTEGER"
+    signed_integer = SIGNED_INTEGER
+    transitions = ['123123', '-19', '0.434', '0.', '.0', '0', '.1', '123foobar.23']
+    for trans in transitions:
+        signed_integer.reset()
+        # print "transition", trans
+        for c in trans:
+            # print "transition", c
+            signed_integer.transit(c)
+            # print float
+        print "transition", trans, "accepted", signed_integer.accepted()
 
     print "FLOAT"
     float = FLOAT
@@ -231,13 +257,126 @@ if __name__ == "__main__":
             # print float
         print "transition", trans, "accepted", float.accepted()
 
-    # print "PLUS"
-    # transitions = ['+', '-', '123+123', '123.23+foobar']
-    # plus = PLUS
-    # for trans in transitions:
-    #     plus.reset()
-    #     for c in trans:
-    #         # print "transition", c
-    #         plus.transit(c)
-    #         # print plus
-    #     print "transition", trans, "accepted", plus.accepted()
+    print "PLUS"
+    transitions = ['+', '-', '123+123', '123.23+foobar']
+    plus = PLUS
+    for trans in transitions:
+        plus.reset()
+        for c in trans:
+            # print "transition", c
+            plus.transit(c)
+            # print plus
+        print "transition", trans, "accepted", plus.accepted()
+
+    print "PLUS AND MINUS"
+    transitions = ['+-', '-+', '+', '-',  '123+123', '123.23+foobar']
+    plus_and_minus = PLUS & MINUS
+    for trans in transitions:
+        plus_and_minus.reset()
+        for c in trans:
+            # print "transition", c
+            plus_and_minus.transit(c)
+            # print plus
+        print "transition", trans, "accepted", plus_and_minus.accepted()
+
+    print "PLUS OR MINUS"
+    transitions = ['+-', '-+', '+', '-', '123+123', '123.23+foobar']
+    plus_or_minus = PLUS | MINUS
+    for trans in transitions:
+        plus_or_minus.reset()
+        for c in trans:
+            # print "transition", c
+            plus_or_minus.transit(c)
+            # print plus
+        print "transition", trans, "accepted", plus_or_minus.accepted()
+
+    print "SIGNED INTEGER"
+    sint = MINUS.concat(INTEGER)
+    transitions = ['-123', '123', '-123.2']
+    for trans in transitions:
+        sint.reset()
+        for c in trans:
+            # print "transition", c
+            sint.transit(c)
+            # print plus
+        print "transition", trans, "accepted", sint.accepted()
+
+    print "ANYINT"
+    anyint = (MINUS & INTEGER) | INTEGER
+    transitions = ['-123', '123', '-123.2']
+    for trans in transitions:
+        anyint.reset()
+        for c in trans:
+            # print "transition", c
+            anyint.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", anyint.accepted()
+
+    print "ANYFLOAT"
+    anyfloat = FLOAT | (MINUS & FLOAT)
+    transitions = ['-123.', '123.', '-.2', '.3', '34']
+    for trans in transitions:
+        anyfloat.reset()
+        for c in trans:
+            # print "transition", c
+            anyfloat.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", anyfloat.accepted()
+
+    print "NUMBER"
+    number = FLOAT | INTEGER
+    transitions = ['123.', '123', '-.2', '.3', '34', '-5']
+    for trans in transitions:
+        number.reset()
+        for c in trans:
+            # print "transition", c
+            number.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", number.accepted()
+
+    print "ANYNUMBER"
+    anynumber = INTEGER | (MINUS&INTEGER) | FLOAT
+    transitions = ['123.', '123', '-.2', '.3', '34', '-5']
+    for trans in transitions:
+        anynumber.reset()
+        for c in trans:
+            # print "transition", c
+            anynumber.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", anynumber.accepted()
+
+    print "INT OP INT"
+
+    anyint = INTEGER | (MINUS & INTEGER)
+    anyfloat = FLOAT | (MINUS & FLOAT)
+    number = anyint | anyfloat
+    binop = PLUS | MINUS | MUL | DIV
+    expr = (anyfloat | anyint) & binop & anyint
+    expr = anyint & binop & anyint
+    expr = (INTEGER | FLOAT | (MINUS&INTEGER)) & binop & number
+
+    transitions = ['12+23', '-12*7', '12./4', '11-23.0']
+    for trans in transitions:
+        expr.reset()
+        for c in trans:
+            # print "transition", c
+            expr.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", expr.accepted()
+
+    print "(FLOAT | INT | -FLOAT | -INT) & (+ | - | * | / ) & (FLOAT | INT | -FLOAT | -INT)"
+
+    anyint = INTEGER | (MINUS & INTEGER)
+    anyfloat = FLOAT | (MINUS & FLOAT)
+    number = anyint | anyfloat
+    binop = PLUS | MINUS | MUL | DIV
+    expr = number & binop & number
+
+    transitions = ['12+23', '12*.7', '12./4', '11-23.']
+    for trans in transitions:
+        expr.reset()
+        for c in trans:
+            # print "transition", c
+            expr.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", expr.accepted()
