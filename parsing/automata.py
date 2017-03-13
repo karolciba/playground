@@ -38,16 +38,6 @@ class Automata(object):
                 listed_value.append(value)
             new_delta[key] = frozenset(listed_value)
 
-        # compress input - if many edges from state to state condense them in
-        # one with a list, default list with one item.
-        # NOTE: poor complexity o(len(delta)**2)
-        # self.delta = new_delta
-        # new_delta = dict()
-        # transitions = set((k[0],v) for k,v in self.delta.iteritems())
-        # for fro,to in transitions:
-        #     inputs = frozenset(k[1] for k,v in self.delta.iteritems() if k[0] == fro and v == to)
-        #     new_delta[fro,inputs] = to
-
         self.delta = new_delta
 
         self.s0 = 0
@@ -103,6 +93,7 @@ class Automata(object):
         self.fringe = set([ self.s0 ])
         if (self.s0,"") in self.delta:
             self.fringe.update(self.delta[self.s0,""])
+        self._unroll_fringe()
 
     def accepted(self):
         return any(st for st in self.fringe if st in self.accepting)
@@ -159,6 +150,32 @@ class Automata(object):
 
         return Automata(new_states, new_delta, new_accepting)
 
+    def closure(self):
+        """Make automata a Kleene closure, i.e. repeatable none or multiple
+        times, adds a epsilon transition from initial state to all accepting
+        and back transition from accecting to start
+        """
+        new_delta = dict(self.delta)
+        start_eps = list(new_delta.get((0,""),[]))
+        for acc in self.accepting:
+            start_eps.append(acc)
+            end_eps = list(new_delta.get((acc,""),[]))
+            end_eps.append(0)
+            new_delta[acc,""] = frozenset(end_eps)
+
+        new_delta[0,""] = frozenset(start_eps)
+
+        return Automata(self.states, new_delta, self.accepting)
+
+    def optional(self):
+        """Concatenates with epsilon transition"""
+        delta = defaultdict(lambda: -1)
+        delta[0,''] = 1
+
+        epsilon = Automata(2,delta,[1])
+
+        return epsilon | self
+
     def __and__(self, other):
         return self.concat(other)
 
@@ -168,6 +185,18 @@ class Automata(object):
     def __str__(self):
         return super(Automata,self).__str__() + " In state {}, accepting {}"\
             .format(self.fringe, [st for st in self.fringe if st in self.accepting])
+
+    def compressed_transitions(self):
+        # compress input - if many edges from state to state condense them in
+        # one with a list, default list with one item.
+        # NOTE: poor complexity o(len(delta)**2)
+        # self.delta = new_delta
+        new_delta = dict()
+        transitions = set((k[0],v) for k,v in self.delta.iteritems())
+        for fro,to in transitions:
+            inputs = frozenset(k[1] for k,v in self.delta.iteritems() if k[0] == fro and v == to)
+            new_delta[fro,inputs] = to
+        return new_delta
 
     def __repr__(self):
         return super(Automata,self).__repr__() + " In state {}, accepting {}"\
@@ -370,9 +399,9 @@ if __name__ == "__main__":
     anyfloat = FLOAT | (MINUS & FLOAT)
     number = anyint | anyfloat
     binop = PLUS | MINUS | MUL | DIV
-    expr = number & binop & number
+    sub_expr = number & binop & number
 
-    transitions = ['12+23', '12*.7', '12./4', '11-23.']
+    transitions = ['.12+23', '12*.7', '12./4', '11-23.']
     for trans in transitions:
         expr.reset()
         for c in trans:
@@ -380,3 +409,25 @@ if __name__ == "__main__":
             expr.transit(c)
             # print anyint
         print "transition", trans, "accepted", expr.accepted()
+
+    print "ANYINT & BINOP & ([-]+ & INTEGER)"
+    optional = anyint & binop & (MINUS.optional() & INTEGER)
+    transitions = ['12+23', '12+-45', '12++44']
+    for trans in transitions:
+        expr.reset()
+        for c in trans:
+            # print "transition", c
+            expr.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", expr.accepted()
+
+    print "KLEENE closure ANYINT & (BINOP & ANYINT)*"
+    kleene = anyint & (binop & INTEGER).closure()
+    transitions = ['12+23', '-1+34+343', '12+45-12', '12+44*34/34', '12++23']
+    for trans in transitions:
+        kleene.reset()
+        for c in trans:
+            # print "transition", c
+            kleene.transit(c)
+            # print anyint
+        print "transition", trans, "accepted", kleene.accepted()
