@@ -75,32 +75,48 @@ class P(object):
             args = args[0]
         probability = args[-1]
         args = args[:-1]
-        columns = frozenset(a for a in args if type(a) in self.columns)
-        conditions = frozenset(a for a in args if type(a) in self.conditions)
-        row = P.Row(columns,conditions)
+        # columns = set(a for a in args if type(a) in self.columns)
+        # conditions = set(a for a in args if type(a) in self.conditions)
+        # row = P.Row(frozenset(columns + conditions))
+        key = frozenset(a for a in args)
         # import pdb; pdb.set_trace()
-        self.rows[row] = row
+        self.rows[key] = probability
     def table(self, rows):
         for row in rows:
             self.row(row)
     def __getitem__(self, *keys):
+        # import pdb; pdb.set_trace()
         if len(keys) == 1:
-            # one key
+            keys = list(keys)
             pass
         else:
             # more keys
             pass
-    def _sum_over(self, column):
-        from itertools import product
-        new_columns = self.columns - set([column])
-        indices = list(*new_columns)
-        indices.extend(self.conditions)
+        return self._sum_over(keys)
+    def normalize(self):
+        whole = sum(v for v in self.rows.values())
+        for k in self.rows:
+            self.rows[k] /= whole
+    def _sum_over(self, columns):
+        from itertools import product, chain
+        set_columns = self.columns - frozenset(columns)
+        summed = []
+        for s in set_columns:
+            summed.extend(s)
+        summed = set(summed)
 
-        indexes = product(*indices)
-        table = []
-        for index in indexes:
-            s = sum(v for k,v in self.rows.iteritems() if k
+        table = {}
+        idx = list(product(*chain(columns,self.conditions)))
+        for i in idx:
+            table[frozenset(i)] = 0
+        for k,v in self.rows.iteritems():
+            i = k - summed
+            table[i] += v
 
+        p = P(set_columns).given(self.conditions)
+        p.rows = table
+
+        return p
 
 
 if __name__ == "__main__":
@@ -119,6 +135,11 @@ if __name__ == "__main__":
         yes = 1
         no = 2
 
+
+    class Failed(Enum):
+        true = 1
+        false = 2
+
     p_TrafficWeather = P(Traffic, Weather)
     p_TrafficWeather.table([ [Traffic.yes, Weather.rainy,  0.1],
                              [Traffic.yes, Weather.cloudy, 0.1],
@@ -127,20 +148,34 @@ if __name__ == "__main__":
                              [Traffic.no,  Weather.cloudy, 0.3],
                              [Traffic.no,  Weather.sunny,  0.1]])
 
-    p_Late_TrafficWeather = P(Late).given(Traffic, Weather)
-    p_Late_TrafficWeather.table([
-            [Late.yes, Traffic.yes, Weather.rainy,  0.1],
-            [Late.yes, Traffic.yes, Weather.cloudy, 0.1],
-            [Late.yes, Traffic.yes, Weather.sunny,  0.2],
-            [Late.yes, Traffic.no,  Weather.rainy,  0.2],
-            [Late.yes, Traffic.no,  Weather.cloudy, 0.3],
-            [Late.yes, Traffic.no,  Weather.sunny,  0.1],
-            [Late.no,  Traffic.yes, Weather.rainy,  0.1],
-            [Late.no,  Traffic.yes, Weather.cloudy, 0.1],
-            [Late.no,  Traffic.yes, Weather.sunny,  0.2],
-            [Late.no,  Traffic.no,  Weather.rainy,  0.2],
-            [Late.no,  Traffic.no,  Weather.cloudy, 0.3],
-            [Late.no,  Traffic.no,  Weather.sunny,  0.1]
+    p_FailedLate_TrafficWeather = P(Late).given(Traffic, Weather)
+    p_FailedLate_TrafficWeather.table([
+            [Failed.true, Late.yes, Traffic.yes, Weather.rainy,  0.1],
+            [Failed.true, Late.yes, Traffic.yes, Weather.cloudy, 0.1],
+            [Failed.true, Late.yes, Traffic.yes, Weather.sunny,  0.2],
+            [Failed.true, Late.yes, Traffic.no,  Weather.rainy,  0.2],
+            [Failed.true, Late.yes, Traffic.no,  Weather.cloudy, 0.3],
+            [Failed.true, Late.yes, Traffic.no,  Weather.sunny,  0.1],
+            [Failed.true, Late.no,  Traffic.yes, Weather.rainy,  0.1],
+            [Failed.true, Late.no,  Traffic.yes, Weather.cloudy, 0.1],
+            [Failed.true, Late.no,  Traffic.yes, Weather.sunny,  0.2],
+            [Failed.true, Late.no,  Traffic.no,  Weather.rainy,  0.2],
+            [Failed.true, Late.no,  Traffic.no,  Weather.cloudy, 0.3],
+            [Failed.true, Late.no,  Traffic.no,  Weather.sunny,  0.1],
+            [Failed.false, Late.yes, Traffic.yes, Weather.rainy,  0.1],
+            [Failed.false, Late.yes, Traffic.yes, Weather.cloudy, 0.1],
+            [Failed.false, Late.yes, Traffic.yes, Weather.sunny,  0.2],
+            [Failed.false, Late.yes, Traffic.no,  Weather.rainy,  0.2],
+            [Failed.false, Late.yes, Traffic.no,  Weather.cloudy, 0.3],
+            [Failed.false, Late.yes, Traffic.no,  Weather.sunny,  0.1],
+            [Failed.false, Late.no,  Traffic.yes, Weather.rainy,  0.1],
+            [Failed.false, Late.no,  Traffic.yes, Weather.cloudy, 0.1],
+            [Failed.false, Late.no,  Traffic.yes, Weather.sunny,  0.2],
+            [Failed.false, Late.no,  Traffic.no,  Weather.rainy,  0.2],
+            [Failed.false, Late.no,  Traffic.no,  Weather.cloudy, 0.3],
+            [Failed.false, Late.no,  Traffic.no,  Weather.sunny,  0.1]
     ])
+    p_FailedLate_TrafficWeather.normalize()
 
-    print p_TrafficWeather[Weather.sunny]
+    # print p_TrafficWeather[Weather]
+    p_Failed_TrafficWeather = p_FailedLate_TrafficWeather[Failed]
