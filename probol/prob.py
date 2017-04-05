@@ -59,6 +59,7 @@ Operations:
 
 All operations should be possibly lazy ;)
 """
+from fractions import Decimal,Fraction
 
 class P(object):
     from collections import namedtuple
@@ -76,7 +77,7 @@ class P(object):
     def row(self, *args):
         if len(args) == 1:
             args = args[0]
-        probability = args[-1]
+        probability = Decimal(str(args[-1]))
         args = args[:-1]
         # columns = set(a for a in args if type(a) in self.columns)
         # conditions = set(a for a in args if type(a) in self.conditions)
@@ -95,7 +96,6 @@ class P(object):
             from itertools import product, chain
             cond = product(*self.conditions)
             for c in cond:
-                print c
                 whole = sum(v for k,v in self.rows.iteritems() if set(c).issubset(k))
                 if whole == 0:
                     continue
@@ -138,7 +138,7 @@ class P(object):
                     s += "{0: <{1}}".format(x.name,con_sizes[i-pipe_pos])
                 s += ", "
             s = s[:-2]
-            s += " = " + str(prob)
+            s += " = " + str(float(prob))
             s += "\n"
             # vals = [x.name for x in k]
             # s += ", ".join(vals)
@@ -193,7 +193,6 @@ class P(object):
         for k in self.rows:
             num = self._query(k)
             den = other._query(k)
-            print k, num, "/", den
             p.rows[k] = self._query(k) / other._query(k)
         return p
 
@@ -209,12 +208,36 @@ class P(object):
         ret = self.rows.get(filtered_keys)
         return ret or self.default
 
+    def _partial_query(self,query):
+        # import pdb; pdb.set_trace()
+        filtered_rows = { key:value for key,value in self.rows.iteritems() if query < key }
+        return sum(value for value in filtered_rows.itervalues())
+
+    def query(self,*keys):
+        keys = set(keys)
+        types = set(type(k) for k in keys)
+        if types < self.variables:
+            return self._partial_query(keys)
+
+        return self._query(keys)
+
     def _marginalize(self, columns):
         from itertools import product, chain
 
+        variables = list(chain(columns, self.conditions))
         table = {}
-        for k in product(*columns):
-            print k
+        for k in product(*variables):
+            table[frozenset(k)] = Decimal(0.0)
+
+        for key,value in self.rows.iteritems():
+            filtered_key = frozenset(k for k in key if type(k) in variables)
+            table[filtered_key] += value
+
+        p = P(*columns).given(*self.conditions)
+        for key,value in table.iteritems():
+            p.row(*chain(key,[value]))
+
+        return p
 
     def _sum_over(self, columns):
         from itertools import product, chain
