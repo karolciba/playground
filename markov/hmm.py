@@ -17,16 +17,16 @@ from collections import namedtuple
 import numpy as np
 
 Model = namedtuple('Model', 'transitions emissions initial')
-transitions = np.array([ [ 0.7, 0.1, 0.1, 0.1 ],
-                [ 0.1, 0.7, 0.1, 0.1 ],
-                [ 0.1, 0.1, 0.7, 0.1 ],
-                [ 0.1, 0.1, 0.1, 0.7 ] ])
-emissions = np.array([ [ 0.495, 0.495, 0.01 ],
-              [ 0.795, 0.195, 0.01 ],
-              [ 0, 0, 1],
-              [ 0.33, 0.33, 0.34 ]])
+transitions = np.array([ [ 0.1, 0.7, 0.1, 0.1 ],
+                         [ 0.1, 0.1, 0.7, 0.1 ],
+                         [ 0.1, 0.1, 0.1, 0.7 ],
+                         [ 0.7, 0.1, 0.1, 0.1 ] ])
+emissions = np.array([ [ 0.998, 0.001, 0.001 ],
+                       [ 0.001, 0.998, 0.001 ],
+                       [ 0, 0, 1],
+                       [ 0.33, 0.33, 0.34 ]])
 initial = np.array([ 0.25, 0.25, 0.25, 0.25 ])
-# transitions = np.array([ [ 0.8, 0.2 ],
+# transitions = np.array([ [ 0.5, 0.5 ],
 #                          [ 0.2, 0.8 ] ])
 # emissions = np.array([ [ 0.5, 0.5 ],
 #                        [ 0.8, 0.2 ] ])
@@ -58,14 +58,17 @@ def random_model_like(model):
 
 train_model = random_model_like(crooked_casino)
 
-def synthetic(model = crooked_casino, verbose = False):
+def synthetic(model = crooked_casino, verbose = False, start = None):
     import random
     from numpy.random import choice
 
     states = xrange(len(model.initial))
     observations = xrange(len(model.emissions[0]))
 
-    state = choice(states, p=model.initial)
+    if start is not None:
+        state = start
+    else:
+        state = choice(states, p=model.initial)
 
     VerboseRecord = namedtuple('VerboseRecord', 'emissions state')
 
@@ -162,6 +165,64 @@ def model_similarity(first, second, order = 3):
 
     return list(zip(first_scores, second_scores, deltas)), sum(deltas)
 
+def model_signature(model, order = 3, sims = 1000):
+    """Monte Carlo method for calculating model signature, i.e. j
+    observation"""
+    transitions = model.transitions
+    emissions = model.emissions
+    initial = model.initial
+
+    temp = np.zeros((sims, order))
+    for x in xrange(sims):
+        g = synthetic(model)
+        for i in xrange(order):
+            temp[x,i] = g.next()
+
+    from collections import Counter
+    counts = Counter()
+    for i in temp:
+        counts[tuple(i)] += 1
+
+    return counts.most_common(1)
+
+from multiprocessing import Pool
+
+def _model_signature_start(args):
+    # print args
+    model, order, sims, start = args
+
+    from collections import Counter
+    counts = Counter()
+
+    # temp = np.zeros(order)
+    temp = [ 0 for _ in range(order) ]
+    for x in xrange(sims):
+        g = synthetic(model, start = start)
+        for i in xrange(order):
+            temp[i] = g.next()
+        key = "".join(map(str,temp))
+        counts[key] += 1
+
+    # print counts.most_common(10)
+    return counts.most_common(10)
+
+def model_signature_start(model, order = 3, sims = 1000):
+    """Monte Carlo method for calculating model signature, i.e. j
+    observation"""
+    transitions = model.transitions
+    emissions = model.emissions
+    initial = model.initial
+
+    pool = Pool()
+    starts = range(len(initial))
+    args = [ (model,order,sims,start) for start in starts ]
+
+    out = pool.map(_model_signature_start, args)
+
+    pool.close()
+
+    return out
+
 def ksi_gamma(observations, model):
     transitions = model.transitions
     emissions = model.emissions
@@ -241,7 +302,7 @@ def baum_welch(observations, model):
 def train(cycles, obs_len, train_model = None):
     if not train_model:
         train_model = random_model(4,3)
-    # train_model = random_model(2,3)
+        # train_model = random_model(2,3)
     if cycles > 0:
         it = xrange(cycles)
     else:
@@ -283,9 +344,9 @@ def train(cycles, obs_len, train_model = None):
         # print "norm", np.linalg.norm(delta)
     print ""
     print "target"
-    print "trainsitions", crooked_casino.transitions
-    print "emissions", crooked_casino.emissions
-    print "initial", crooked_casino.initial
+    print "trainsitions\n", crooked_casino.transitions
+    print "emissions\n", crooked_casino.emissions
+    print "initial\n", crooked_casino.initial
 
     return train_model
 
