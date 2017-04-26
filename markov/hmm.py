@@ -56,6 +56,24 @@ def random_model(states_count, symbols_count):
 def random_model_like(model):
     return random_model( len(model.initial), len(model.emissions[0]))
 
+def normalize_model(model):
+    transitions = model.transitions
+    emissions = model.emissions
+    initial = model.initial
+
+    # normalize arrays row wise
+    transitions_sums = np.sum(transitions, axis=1)
+    transitions /= transitions_sums[:,None]
+
+    emissions_sums = np.sum(emissions, axis=1)
+    emissions /= emissions_sums[:,None]
+
+    initial_sums = np.sum(initial)
+    initial /= initial_sums
+
+    return Model(transitions, emissions, initial)
+
+
 def copy_model(orig):
     transitions = orig.transitions.copy()
     emissions = orig.emissions.copy()
@@ -383,26 +401,41 @@ def batch_baum_welch(observations_list, model):
     # normalize
     # initial = g[:,0]
 
-    eta = 0.0001
+    eta = 0.00001
     initial[ initial == 0 ] = eta
     initial /= np.sum(initial)
     new_model.initial[:] = initial[:]
 
     for fro in range(states_no):
-        for to in range(states_no):
-            noms = [ sum(k[fro,to,:-1]) for k in ksis ]
-            denoms = [ sum(g[fro,:-1]) for g in gammas ]
-            transitions[fro,to] = sum(noms)/sum(denoms)
+        denoms = [ sum(g[fro,:-1]) for g in gammas ]
+        if denoms == 0.0:
+            for to in range(states_no):
+                transitions[fro,to] = 0.00001
+        else:
+            for to in range(states_no):
+                noms = [ sum(k[fro,to,:-1]) for k in ksis ]
+                if noms == 0.0 or denoms == 0.0:
+                    transitions[fro,to] = 0.00001
+                else:
+                    transitions[fro,to] = sum(noms)/sum(denoms)
 
     for state in range(states_no):
-        for e in range(len(emissions[0])):
-            nom = 0.0
-            for observations,g in zip(observations_list, gammas):
-                for i in range(len(observations)-1):
-                    if observations[i] == e:
-                        nom += g[state,i]
-            denoms = [ sum(g[state,:]) for g in gammas ]
-            emissions[state,e] = nom/sum(denoms)
+        denoms = sum(sum(g[state,:]) for g in gammas)
+        if denoms == 0.0:
+            for e in range(len(emissions[0])):
+                emissions[state,e] = 0.00001
+        else:
+            for e in range(len(emissions[0])):
+                nom = 0.0
+                for observations,g in zip(observations_list, gammas):
+                    for i in range(len(observations)-1):
+                        if observations[i] == e:
+                            nom += g[state,i]
+                if nom == 0.0 or denoms == 0.0:
+                    emissions[state,e] = 0.00001
+                else:
+                    emissions[state,e] = nom/denoms
+
     return new_model
 
 def batch_train(cycles, obs_len, batch_size):

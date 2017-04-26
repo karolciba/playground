@@ -55,9 +55,9 @@ def query():
     hmm.probabilities(model, 5)
 
 def train():
-    symbols = 50
+    symbols = 100
+    states = 100
     e, q, d, bins = preprocess(symbols)
-    states = 50
 
     model = hmm.random_model(states,symbols)
 
@@ -73,7 +73,7 @@ def train():
     # plt.savefig("out{}.png".format(i))
 
     # try:
-    step=10000
+    step = 1000
     sig = q
     length = len(sig)
     fro = 0
@@ -88,7 +88,7 @@ def train():
         print("batch from {} to {}".format(fro,to),end="\r")
 
         i+=1
-        if to >= length:
+        if to >= length - 9*step:
             print("\nIteration {}".format(i))
             fro = 0
             to = step
@@ -106,8 +106,9 @@ def train():
         fro += step
         to += step
 
-        for o in obs:
-            model = hmm.baum_welch(o,model)
+        # for o in obs:
+        #     model = hmm.baum_welch(o,model)
+        model = hmm.batch_baum_welch(obs,model)
 
         plt.subplot(211)
         plt.imshow(model.transitions)
