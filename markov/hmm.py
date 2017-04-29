@@ -17,20 +17,20 @@ from collections import namedtuple
 import numpy as np
 
 Model = namedtuple('Model', 'transitions emissions initial')
-transitions = np.array([ [ 0.1, 0.7, 0.1, 0.1 ],
-                         [ 0.1, 0.1, 0.7, 0.1 ],
-                         [ 0.1, 0.1, 0.1, 0.7 ],
-                         [ 0.7, 0.1, 0.1, 0.1 ] ])
-emissions = np.array([ [ 0.998, 0.001, 0.001 ],
-                       [ 0.001, 0.998, 0.001 ],
-                       [ 0, 0, 1],
-                       [ 0.33, 0.33, 0.34 ]])
-initial = np.array([ 0.25, 0.25, 0.25, 0.25 ])
-# transitions = np.array([ [ 0.5, 0.5 ],
-#                          [ 0.2, 0.8 ] ])
-# emissions = np.array([ [ 0.5, 0.5 ],
-#                        [ 0.8, 0.2 ] ])
-# initial = np.array([ 0.5, 0.5 ])
+# transitions = np.array([ [ 0.1, 0.7, 0.1, 0.1 ],
+#                          [ 0.1, 0.1, 0.7, 0.1 ],
+#                          [ 0.1, 0.1, 0.1, 0.7 ],
+#                          [ 0.7, 0.1, 0.1, 0.1 ] ])
+# emissions = np.array([ [ 0.998, 0.001, 0.001 ],
+#                        [ 0.001, 0.998, 0.001 ],
+#                        [ 0, 0, 1],
+#                        [ 0.33, 0.33, 0.34 ]])
+# initial = np.array([ 0.25, 0.25, 0.25, 0.25 ])
+transitions = np.array([ [ 0.5, 0.5 ],
+                         [ 0.2, 0.8 ] ])
+emissions = np.array([ [ 0.5, 0.5 ],
+                       [ 0.8, 0.2 ] ])
+initial = np.array([ 0.5, 0.5 ])
 
 crooked_casino = Model(transitions, emissions, initial)
 
@@ -62,8 +62,8 @@ def synthetic(model = crooked_casino, verbose = False, start = None):
     import random
     from numpy.random import choice
 
-    states = xrange(len(model.initial))
-    observations = xrange(len(model.emissions[0]))
+    states = range(len(model.initial))
+    observations = range(len(model.emissions[0]))
 
     if start is not None:
         state = start
@@ -84,9 +84,9 @@ def denumerate(iter, start=-1):
     """denumerate(iterable[, start]) -> iterator for index, value for iterable"
 
     Reversed enumerator yelding elements from iterator along with index couting down"""
-    from itertools import count, izip
+    from itertools import count
 
-    return izip(count(start, -1), iter)
+    return zip(count(start, -1), iter)
 
 def alpha(observations, model, normalized = True):
     transitions = model.transitions
@@ -100,7 +100,7 @@ def alpha(observations, model, normalized = True):
 
     # egde case for dynamic algorithm,
     a = np.empty((states_no, len(observations)))
-    for state in xrange(states_no):
+    for state in range(states_no):
         a[state,0] = emissions[state,observations[0]] * initial[state]
     # normalize this step to obtain pseudo-probability
     if normalized:
@@ -108,8 +108,8 @@ def alpha(observations, model, normalized = True):
 
     for i,o in enumerate(observations[1:],1):
         # TODO: numpy'ize this?
-        for state in xrange(states_no):
-            a[state,i] = sum(a[prev_state,i-1] * transitions[prev_state,state] for prev_state in xrange(states_no)) * emissions[state,o]
+        for state in range(states_no):
+            a[state,i] = sum(a[prev_state,i-1] * transitions[prev_state,state] for prev_state in range(states_no)) * emissions[state,o]
 
         # normalize this step to obtain pseudo-probability
         if normalized:
@@ -117,7 +117,7 @@ def alpha(observations, model, normalized = True):
 
     return a
 
-def beta(observations, model):
+def beta(observations, model, normalized = True):
     transitions = model.transitions
     emissions = model.emissions
     initial = model.initial
@@ -130,15 +130,19 @@ def beta(observations, model):
     b = np.empty((states_no, len(observations)))
 
     # edge case for dynamic algorithm
-    b[:,-1] = 1.0/states_no
+    if normalized:
+        b[:,-1] = 1.0/states_no
+    else:
+        b[:,-1] = 1.0
 
     for i,o in denumerate(reversed(observations[1:]),len(observations)-2):
         # TODO: numpy'ize this?
-        for state in xrange(states_no):
-            b[state,i] = sum(transitions[state,next_state] * emissions[next_state,o] * b[next_state,i+1] for next_state in xrange(states_no))
+        for state in range(states_no):
+            b[state,i] = sum(transitions[state,next_state] * emissions[next_state,o] * b[next_state,i+1] for next_state in range(states_no))
 
         # normalize this step to obtain pseudo-probability
-        b[:,i] /= np.sum(b[:,i])
+        if normalized:
+            b[:,i] /= np.sum(b[:,i])
 
     return b
 
@@ -173,9 +177,9 @@ def model_signature(model, order = 3, sims = 1000):
     initial = model.initial
 
     temp = np.zeros((sims, order))
-    for x in xrange(sims):
+    for x in range(sims):
         g = synthetic(model)
-        for i in xrange(order):
+        for i in range(order):
             temp[x,i] = g.next()
 
     from collections import Counter
@@ -188,7 +192,7 @@ def model_signature(model, order = 3, sims = 1000):
 from multiprocessing import Pool
 
 def _model_signature_start(args):
-    # print args
+    # #print args
     model, order, sims, start = args
 
     from collections import Counter
@@ -196,14 +200,14 @@ def _model_signature_start(args):
 
     # temp = np.zeros(order)
     temp = [ 0 for _ in range(order) ]
-    for x in xrange(sims):
+    for x in range(sims):
         g = synthetic(model, start = start)
-        for i in xrange(order):
+        for i in range(order):
             temp[i] = g.next()
         key = "".join(map(str,temp))
         counts[key] += 1
 
-    # print counts.most_common(10)
+    # #print counts.most_common(10)
     return counts.most_common(10)
 
 def model_signature_start(model, order = 3, sims = 1000):
@@ -238,15 +242,15 @@ def ksi_gamma(observations, model):
 
     for i,o in enumerate(observations[1:],0):
         s = 0.0
-        for fro in xrange(states_no):
+        for fro in range(states_no):
             ss = 0.0
-            for to in xrange(states_no):
+            for to in range(states_no):
                 k[fro,to,i] = a[fro,i]*transitions[fro,to]*b[to,i+1]*emissions[to,o]
                 s += k[fro,to,i]
                 ss += k[fro,to,i]
             g[fro,i] = ss
-        for fro in xrange(states_no):
-            for to in xrange(states_no):
+        for fro in range(states_no):
+            for to in range(states_no):
                 k[fro,to,i] /= s
         g[:,i] /= np.sum(g[:,i])
 
@@ -274,14 +278,14 @@ def baum_welch(observations, model):
     initial /= np.sum(initial)
     new_model.initial[:] = initial[:]
 
-    for fro in xrange(states_no):
-        for to in xrange(states_no):
+    for fro in range(states_no):
+        for to in range(states_no):
             transitions[fro,to] = sum(k[fro,to,:-1])/sum(g[fro,:-1])
 
-    for state in xrange(states_no):
-        for e in xrange(len(emissions[0])):
+    for state in range(states_no):
+        for e in range(len(emissions[0])):
             nom = 0.0
-            for i in xrange(len(observations)-1):
+            for i in range(len(observations)-1):
                 if observations[i] == e:
                     nom += g[state,i]
             emissions[state,e] = nom/sum(g[state,:])
@@ -304,26 +308,26 @@ def train(cycles, obs_len, train_model = None):
         train_model = random_model(4,3)
         # train_model = random_model(2,3)
     if cycles > 0:
-        it = xrange(cycles)
+        it = range(cycles)
     else:
         from itertools import count
         it = count()
     for cycle in it:
-        print ""
-        print "cycle", cycle
+        #print ""
+        #print "cycle", cycle
         g = synthetic()
-        o = [ g.next() for x in xrange(obs_len) ]
+        o = [ g.next() for x in range(obs_len) ]
         model = baum_welch(o, train_model)
-        print ""
-        print "before"
-        print "trainsitions\n", train_model.transitions
-        print "emissions\n", train_model.emissions
-        print "initial\n", train_model.initial
-        print ""
-        print "after"
-        print "trainsitions\n", model.transitions
-        print "emissions\n", model.emissions
-        print "initial\n", model.initial
+        #print ""
+        #print "before"
+        #print "trainsitions\n", train_model.transitions
+        #print "emissions\n", train_model.emissions
+        #print "initial\n", train_model.initial
+        #print ""
+        #print "after"
+        #print "trainsitions\n", model.transitions
+        #print "emissions\n", model.emissions
+        #print "initial\n", model.initial
         # import pdb; pdb.set_trace()
         t_delta = np.sum(train_model.transitions.flatten() * model.transitions.flatten())
         t_delta /= np.linalg.norm(train_model.transitions.flatten())
@@ -334,19 +338,19 @@ def train(cycles, obs_len, train_model = None):
         i_delta = np.sum(train_model.initial.flatten() * model.initial.flatten())
         i_delta /= np.linalg.norm(train_model.initial.flatten())
         i_delta /= np.linalg.norm(model.initial.flatten())
-        print ""
-        print "deltas"
-        print "transitions\n", t_delta
-        print "emissions\n", e_delta
-        print "initial\n", i_delta
+        #print ""
+        #print "deltas"
+        #print "transitions\n", t_delta
+        #print "emissions\n", e_delta
+        #print "initial\n", i_delta
         # delta = np.hstack( (t_delta.flatten(), e_delta.flatten(), i_delta))
         train_model = model
-        # print "norm", np.linalg.norm(delta)
-    print ""
-    print "target"
-    print "trainsitions\n", crooked_casino.transitions
-    print "emissions\n", crooked_casino.emissions
-    print "initial\n", crooked_casino.initial
+        # #print "norm", np.linalg.norm(delta)
+    #print ""
+    #print "target"
+    #print "trainsitions\n", crooked_casino.transitions
+    #print "emissions\n", crooked_casino.emissions
+    #print "initial\n", crooked_casino.initial
 
     return train_model
 
@@ -380,17 +384,17 @@ def batch_baum_welch(observations_list, model):
     initial /= np.sum(initial)
     new_model.initial[:] = initial[:]
 
-    for fro in xrange(states_no):
-        for to in xrange(states_no):
+    for fro in range(states_no):
+        for to in range(states_no):
             noms = [ sum(k[fro,to,:-1]) for k in ksis ]
             denoms = [ sum(g[fro,:-1]) for g in gammas ]
             transitions[fro,to] = sum(noms)/sum(denoms)
 
-    for state in xrange(states_no):
-        for e in xrange(len(emissions[0])):
+    for state in range(states_no):
+        for e in range(len(emissions[0])):
             nom = 0.0
             for observations,g in zip(observations_list, gammas):
-                for i in xrange(len(observations)-1):
+                for i in range(len(observations)-1):
                     if observations[i] == e:
                         nom += g[state,i]
             denoms = [ sum(g[state,:]) for g in gammas ]
@@ -400,40 +404,40 @@ def batch_baum_welch(observations_list, model):
 def batch_train(cycles, obs_len, batch_size):
     global pool
     pool = Pool()
-    for cycle in xrange(cycles):
-        print ""
-        print "cycle", cycle
+    for cycle in range(cycles):
+        #print ""
+        #print "cycle", cycle
         g = synthetic()
-        o = [ [ g.next() for x in xrange(obs_len) ] for y in range(batch_size) ]
+        o = [ [ g.next() for x in range(obs_len) ] for y in range(batch_size) ]
         global train_model
         model = batch_baum_welch(o, train_model)
-        print ""
-        print "before"
-        print "trainsitions", train_model.transitions
-        print "emissions", train_model.emissions
-        print "initial", train_model.initial
-        print ""
-        print "after"
-        print "trainsitions", model.transitions
-        print "emissions", model.emissions
-        print "initial", model.initial
+        #print ""
+        #print "before"
+        #print "trainsitions", train_model.transitions
+        #print "emissions", train_model.emissions
+        #print "initial", train_model.initial
+        #print ""
+        #print "after"
+        #print "trainsitions", model.transitions
+        #print "emissions", model.emissions
+        #print "initial", model.initial
         # import pdb; pdb.set_trace()
         t_delta = train_model.transitions - model.transitions
         e_delta = train_model.emissions - model.emissions
         i_delta = train_model.initial - model.initial
-        print ""
-        print "deltas"
-        print "transitions", t_delta
-        print "emissions", e_delta
-        print "initial", i_delta
+        #print ""
+        #print "deltas"
+        #print "transitions", t_delta
+        #print "emissions", e_delta
+        #print "initial", i_delta
         delta = np.hstack( (t_delta.flatten(), e_delta.flatten(), i_delta))
         train_model = model
-        print "norm", np.linalg.norm(delta)
+        #print "norm", np.linalg.norm(delta)
 
     return train_model
     pool.close()
-    print ""
-    print "target"
-    print "trainsitions", crooked_casino.transitions
-    print "emissions", crooked_casino.emissions
-    print "initial", crooked_casino.initial
+    #print ""
+    #print "target"
+    #print "trainsitions", crooked_casino.transitions
+    #print "emissions", crooked_casino.emissions
+    #print "initial", crooked_casino.initial
