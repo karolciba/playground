@@ -65,8 +65,8 @@ class PointsRenderer(Renderer):
 
             rx = int(round(x))
             ry = int(round(y))
-            for i in range( -point.size/2, point.size/2):
-                for j in range( -point.size/2, point.size/2):
+            for i in range( -point.size//2, point.size//2):
+                for j in range( -point.size//2, point.size//2):
                     rxi = rx + i
                     ryj = ry + j
                     if rxi < 0 or rxi >= camera.size[0] or ryj < 0 or ryj >= camera.size[1]:

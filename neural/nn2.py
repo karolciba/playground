@@ -42,7 +42,7 @@ def f_xor(x):
 def f_xnor(x):
     return 0 if (x[0] == 1 and x[1] == 0) or (x[0] == 0 and x[1] == 1) else 1
 
-Y = f_xor
+Y = f_nand
 
 def bias(x):
     return np.append(x.flatten(),1)

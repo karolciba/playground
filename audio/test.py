@@ -9,7 +9,7 @@ pa = PyAudio()
 
 
 def callback(in_data, frame_count, time_info, flag):
-    print len(in_data), frame_count, time_info, flag
+    # print len(in_data), frame_count, time_info, flag
 
     # new_data = [ x**2 for x in in_data ]
     data = np.frombuffer(in_data, dtype=np.float32)

@@ -26,11 +26,18 @@ Model = namedtuple('Model', 'transitions emissions initial')
 #                        [ 0.0,   0.0,   1.0 ],
 #                        [ 0.1,   0.1,   0.8 ]])
 # initial = np.array([ 0.25, 0.25, 0.25, 0.25 ])
-transitions = np.array([ [ 0.5, 0.5 ],
-                         [ 0.2, 0.8 ] ])
+transitions = np.array([ [ 0.5, 0.5, 0.0 ],
+                         [ 0.2, 0.7, 0.1 ],
+                         [ 1.0, 0.0, 0.0 ]])
 emissions = np.array([ [ 0.5, 0.5 ],
-                       [ 0.8, 0.2 ] ])
-initial = np.array([ 0.5, 0.5 ])
+                       [ 0.8, 0.2 ],
+                       [ 0.0, 1.0 ]])
+initial = np.array([ 0.5, 0.4, 0.1 ])
+# transitions = np.array([ [ 0.5, 0.5 ],
+#                          [ 0.2, 0.8 ] ])
+# emissions = np.array([ [ 0.5, 0.5 ],
+#                        [ 0.8, 0.2 ] ])
+# initial = np.array([ 0.5, 0.5 ])
 
 crooked_casino = Model(transitions, emissions, initial)
 
@@ -44,12 +51,15 @@ def random_model(states_count, symbols_count):
     # normalize arrays row wise
     transitions_sums = np.sum(transitions, axis=1)
     transitions /= transitions_sums[:,None]
+    transitions = transitions.astype(np.float32)
 
     emissions_sums = np.sum(emissions, axis=1)
     emissions /= emissions_sums[:,None]
+    emissions = emissions.astype(np.float32)
 
     initial_sums = np.sum(initial)
     initial /= initial_sums
+    initial = initial.astype(np.float32)
 
     return Model(transitions, emissions, initial)
 
@@ -64,12 +74,15 @@ def normalize_model(model):
     # normalize arrays row wise
     transitions_sums = np.sum(transitions, axis=1)
     transitions /= transitions_sums[:,None]
+    transitions = transitions.astype(np.float32)
 
     emissions_sums = np.sum(emissions, axis=1)
     emissions /= emissions_sums[:,None]
+    emissions = emissions.astype(np.float32)
 
     initial_sums = np.sum(initial)
     initial /= initial_sums
+    initial = initial.astype(np.float32)
 
     return Model(transitions, emissions, initial)
 
@@ -141,7 +154,7 @@ def alpha(observations, model, normalized = True):
 
     return a
 
-def beta(observations, model):
+def beta(observations, model, normalized = True):
     transitions = model.transitions
     emissions = model.emissions
     initial = model.initial
@@ -154,7 +167,10 @@ def beta(observations, model):
     b = np.empty((states_no, len(observations)))
 
     # edge case for dynamic algorithm
-    b[:,-1] = 1.0/states_no
+    b[:,-1] = 1.0
+
+    if normalized:
+        b[:,-1] /= np.sum(b[:,-1])
 
     for i,o in denumerate(reversed(observations[1:]),len(observations)-2):
         # TODO: numpy'ize this?
@@ -162,7 +178,8 @@ def beta(observations, model):
             b[state,i] = sum(transitions[state,next_state] * emissions[next_state,o] * b[next_state,i+1] for next_state in range(states_no))
 
         # normalize this step to obtain pseudo-probability
-        b[:,i] /= np.sum(b[:,i])
+        if normalized:
+            b[:,i] /= np.sum(b[:,i])
 
     return b
 
@@ -295,34 +312,45 @@ def baum_welch(observations, model):
     # normalize
     # initial = g[:,0]
 
-    initial[ initial == 0 ] = eta
+    # initial[ initial == 0 ] = eta
     initial /= np.sum(initial)
+    initial[~np.isfinite(initial)] = 0
     new_model.initial[:] = initial[:]
 
     for fro in range(states_no):
         for to in range(states_no):
-            transitions[fro,to] = sum(k[fro,to,:-1])/sum(g[fro,:-1])
+            num = sum(k[fro,to,:-1])
+            den = sum(g[fro,:-1])
+            if (not np.isfinite(num) or not np.isfinite(den) or den == 0):
+                transitions[fro,to] = 0
+            else:
+                transitions[fro,to] = num/den
 
     for state in range(states_no):
         for e in range(len(emissions[0])):
-            nom = 0.0
+            num = 0.0
             for i in range(len(observations)-1):
                 if observations[i] == e:
-                    nom += g[state,i]
-            emissions[state,e] = nom/sum(g[state,:])
+                    num += g[state,i]
+            den = sum(g[state,:])
+            if (not np.isfinite(num) or not np.isfinite(den) or den == 0):
+                emissions[state,e] = 0
+            else:
+                emissions[state,e] = num/den
 
     # smooth
     # normalize arrays row wise
     transitions[ transitions == 0 ] = eta
     transitions_sums = np.sum(transitions, axis=1)
     transitions /= transitions_sums[:,None]
+    transitions[~np.isfinite(transitions)] = 0
 
     emissions[ emissions == 0] = eta
     emissions_sums = np.sum(emissions, axis=1)
     emissions /= emissions_sums[:,None]
+    emissions[~np.isfinite(emissions)] = 0
 
     return new_model
-    import pdb; pdb.set_trace()
 
 def train(cycles, obs_len, train_model = None):
     if not train_model:
@@ -337,7 +365,7 @@ def train(cycles, obs_len, train_model = None):
         print("")
         print("cycle", cycle)
         g = synthetic()
-        o = [ g.next() for x in range(obs_len) ]
+        o = [ next(g) for x in range(obs_len) ]
         model = baum_welch(o, train_model)
         print("")
         print("before")
@@ -379,8 +407,8 @@ def ksi_gamma_wrapper(params):
     obs, model = params
     return ksi_gamma(obs, model)
 
-from multiprocessing import Pool
-pool = Pool()
+# from multiprocessing import Pool
+# pool = Pool()
 
 def batch_baum_welch(observations_list, model):
     ksis_gammas = pool.map(ksi_gamma_wrapper, [ [obs, model] for obs in observations_list ])
@@ -445,7 +473,7 @@ def batch_train(cycles, obs_len, batch_size):
         print("")
         print("cycle", cycle)
         g = synthetic()
-        o = [ [ g.next() for x in range(obs_len) ] for y in range(batch_size) ]
+        o = [ [ next(g) for x in range(obs_len) ] for y in range(batch_size) ]
         global train_model
         model = batch_baum_welch(o, train_model)
         print("")
@@ -472,9 +500,3 @@ def batch_train(cycles, obs_len, batch_size):
         print("norm", np.linalg.norm(delta))
 
     return train_model
-    pool.close()
-    print("")
-    print("target")
-    print("trainsitions", crooked_casino.transitions)
-    print("emissions", crooked_casino.emissions)
-    print("initial", crooked_casino.initial)

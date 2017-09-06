@@ -214,6 +214,11 @@ class P(object):
         return sum(value for value in filtered_rows.itervalues())
 
     def query(self,*keys):
+        #TODO: require specyfing all conditions (doesn't make sense otherwise)
+        #TODO: think about way to query Joint probability defining condition
+        #otherwise it is required to obtain conditional probability and then queyr
+        # (p_Joint/p_Intelligence/p_Difficulty).query(Letter.l1, Intelligence.i0, Difficulty.d0)
+        #which if inefficent and cumbersome
         keys = set(keys)
         types = set(type(k) for k in keys)
         if types < self.variables:
@@ -221,7 +226,29 @@ class P(object):
 
         return self._query(keys)
 
+    # def _marginalize_anything(self, columns):
+    #     from itertools import product, chain
+    #
+    #     columns = set(columns)
+    #     print columns
+    #     table = {}
+    #     for k in product(*columns):
+    #         table[frozenset(k)] = Decimal(0.0)
+    #
+    #     print table
+    #     for key,value in self.rows.iteritems():
+    #         print key,value
+    #         filtered_key = frozenset(k for k in key if type(k) in columns)
+    #         table[filtered_key] += value
+    #
+    #     p = P(*(columns-self.conditions)).given(*(self.conditions & columns))
+    #     for key,value in table.iteritems():
+    #         p.row(*chain(key,[value]))
+    #
+    #     return p
+
     def _marginalize(self, columns):
+        #TODO: don't allow marginalization over conditions
         from itertools import product, chain
 
         variables = list(chain(columns, self.conditions))
@@ -239,27 +266,26 @@ class P(object):
 
         return p
 
-    def _sum_over(self, columns):
-        from itertools import product, chain
-        rest_columns = self.columns - frozenset(columns)
-        summed = []
-        for s in rest_columns:
-            summed.extend(s)
-        summed = set(summed)
-
-        table = {}
-        idx = list(product(*chain(columns,self.conditions)))
-        for i in idx:
-            table[frozenset(i)] = 0
-        for k,v in self.rows.iteritems():
-            i = k - summed
-            table[i] += v
-
-        p = P(rest_columns).given(self.conditions)
-        p.rows = table
-
-
-        return p
+    # def _sum_over(self, columns):
+    #     from itertools import product, chain
+    #     rest_columns = self.columns - frozenset(columns)
+    #     summed = []
+    #     for s in rest_columns:
+    #         summed.extend(s)
+    #     summed = set(summed)
+    #
+    #     table = {}
+    #     idx = list(product(*chain(columns,self.conditions)))
+    #     for i in idx:
+    #         table[frozenset(i)] = 0
+    #     for k,v in self.rows.iteritems():
+    #         i = k - summed
+    #         table[i] += v
+    #
+    #     p = P(rest_columns).given(self.conditions)
+    #     p.rows = table
+    #
+    #     return p
 
 
 if __name__ == "__main__":
