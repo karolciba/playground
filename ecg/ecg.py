@@ -14,15 +14,22 @@ def preprocess(count = 30):
     ecg = sig[:500000,0]
     diff = np.diff(ecg)
 
-    dmax = np.max(diff)-0.01
-    dmin = np.min(diff)+0.01
+    emax = np.max(ecg)
+    emin = np.min(ecg)
     count = count - 2
-    print(dmin,dmax)
-    bins = [ dmin + (dmax - dmin)/count * i for i in range(count+1) ]
-    print("bins",len(bins))
-    quantized = np.digitize(diff, bins)
-
+    bins = [ emin + (emax - emin)/count * i for i in range(count+1) ]
+    quantized = np.digitize(ecg, bins)
     dequant = np.empty(len(quantized))
+
+    # dmax = np.max(diff)-0.01
+    # dmin = np.min(diff)+0.01
+    # count = count - 2
+    # print(dmin,dmax)
+    # bins = [ dmin + (dmax - dmin)/count * i for i in range(count+1) ]
+    # print("bins",len(bins))
+    # quantized = np.digitize(diff, bins)
+    #
+    # dequant = np.empty(len(quantized))
 
     running = 0
     for i in range(len(dequant)):
@@ -56,24 +63,29 @@ def query():
 
 def train():
     symbols = 100
-    states = 100
+    states = 30
     e, q, d, bins = preprocess(symbols)
 
     model = hmm.random_model(states,symbols)
+    gen = hmm.synthetic(model)
+    sampl = [next(gen) for _ in range(1000)]
 
     plt.ion()
-    plt.subplot(211)
-    plt.imshow(model.transitions)
-    plt.subplot(212)
-    plt.imshow(model.emissions)
+    plt.clf()
+    plt.subplot(311)
+    plt.imshow(model.transitions,interpolation='nearest', shape=model.transitions.shape)
+    plt.subplot(312)
+    plt.imshow(model.emissions,interpolation='nearest', shape=model.emissions.shape)
+    plt.subplot(313)
+    plt.plot(sampl)
     plt.show()
     plt.pause(0.001)
 
     i = 0
-    # plt.savefig("out{}.png".format(i))
+    plt.savefig("out{}.png".format(i))
 
     # try:
-    step = 1000
+    step = 10000
     sig = q
     length = len(sig)
     fro = 0
@@ -96,24 +108,33 @@ def train():
 
         obs = [ ]
 
-        tmp_fro = fro
-        tmp_to = to
-        for x in range(8):
-            obs.append(sig[tmp_fro:tmp_to])
-            tmp_fro += step
-            tmp_to += step
+        # tmp_fro = fro
+        # tmp_to = to
+        # for x in range(8):
+        #     obs.append(sig[tmp_fro:tmp_to])
+        #     tmp_fro += step
+        #     tmp_to += step
+        o = sig[fro:to]
 
         fro += step
         to += step
 
         # for o in obs:
         #     model = hmm.baum_welch(o,model)
-        model = hmm.batch_baum_welch(obs,model)
+        for i in range(100):
+            model = hmm.baum_welch(o,model)
 
-        plt.subplot(211)
-        plt.imshow(model.transitions)
-        plt.subplot(212)
-        plt.imshow(model.emissions)
+        gen = hmm.synthetic(model)
+        sampl = [next(gen) for _ in range(1000)]
+        # model = hmm.batch_baum_welch(obs,model)
+
+        plt.clf()
+        plt.subplot(311)
+        plt.imshow(model.transitions,interpolation='nearest', shape=model.transitions.shape)
+        plt.subplot(312)
+        plt.imshow(model.emissions,interpolation='nearest', shape=model.emissions.shape)
+        plt.subplot(313)
+        plt.plot(sampl)
         plt.show()
         plt.pause(0.001)
         plt.savefig("out{}.png".format(i))
@@ -121,10 +142,12 @@ def train():
     #     pass
 
     plt.ioff()
-    plt.subplot(211)
-    plt.imshow(model.transitions)
-    plt.subplot(212)
-    plt.imshow(model.emissions)
+    plt.subplot(311)
+    plt.imshow(model.transitions,interpolation='nearest', shape=model.transitions.shape)
+    plt.subplot(312)
+    plt.imshow(model.emissions,interpolation='nearest', shape=model.emissions.shape)
+    plt.subplot(313)
+    plt.plot(sampl)
     plt.show()
 
     return model, bins
