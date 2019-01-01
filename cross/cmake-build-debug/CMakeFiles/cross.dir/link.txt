@@ -1,0 +1,1 @@
+/usr/bin/g++  -lsfml-graphics -lsfml-window -lsfml-system -g   CMakeFiles/cross.dir/csolv.cpp.o  -o cross -lsfml-graphics -lsfml-window -lsfml-system 

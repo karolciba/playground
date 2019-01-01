@@ -1,0 +1,1 @@
+/usr/bin/c++   -g   CMakeFiles/cross.dir/csolv.cpp.o  -o cross 

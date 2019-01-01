@@ -1,0 +1,3 @@
+/home/karol/workspace/playground/cross/Release/CMakeFiles/edit_cache.dir
+/home/karol/workspace/playground/cross/Release/CMakeFiles/rebuild_cache.dir
+/home/karol/workspace/playground/cross/Release/CMakeFiles/cross.dir
